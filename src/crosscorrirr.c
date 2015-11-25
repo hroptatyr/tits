@@ -37,25 +37,9 @@ ccf_gauss(int k, unsigned int res, cots_ts_t *xt, cots_ts_t *yt, cots_pf_t *xp, 
 #endif
 
 static __attribute__((unused)) int
-_stats_d(double mean[static 1U], double std[static 1U], ald_t s[], size_t ns)
-{
-	VSLSSTaskPtr task;
-	MKL_INT ndim = 1;
-	MKL_INT dim1 = ns;
-	MKL_INT stor = VSL_SS_MATRIX_STORAGE_ROWS;
-	int rc = 0;
-
-	rc += vsldSSNewTask(&task, &ndim, &dim1, &stor, s, 0, 0);
-	rc += vsldSSEditTask(task, VSL_SS_ED_MEAN, mean);
-	rc += vsldSSEditTask(task, VSL_SS_ED_2R_MOM, std);
-	rc += vsldSSCompute(task, VSL_SS_2R_MOM, VSL_SS_METHOD_FAST);
-	rc += vslSSDeleteTask(&task);
-	return rc;
-}
-
-static int
 _stats_f(float mean[static 1U], float std[static 1U], alf_t s[], size_t ns)
 {
+#define VSL_SS_TASK	(VSL_SS_MEAN | VSL_SS_2R_MOM)
 	VSLSSTaskPtr task;
 	MKL_INT ndim = 1;
 	MKL_INT dim1 = ns;
@@ -65,19 +49,38 @@ _stats_f(float mean[static 1U], float std[static 1U], alf_t s[], size_t ns)
 	rc += vslsSSNewTask(&task, &ndim, &dim1, &stor, s, 0, 0);
 	rc += vslsSSEditTask(task, VSL_SS_ED_MEAN, mean);
 	rc += vslsSSEditTask(task, VSL_SS_ED_2R_MOM, std);
-	rc += vslsSSCompute(task, VSL_SS_2R_MOM, VSL_SS_METHOD_FAST);
+	rc += vslsSSCompute(task, VSL_SS_TASK, VSL_SS_METHOD_FAST);
 	rc += vslSSDeleteTask(&task);
 	return rc;
+#undef VSL_SS_TASK
+}
+
+static __attribute__((unused)) int
+_quasi_stats_f(float mean[static 1U], float std[static 1U], alf_t s[], size_t ns)
+{
+	float min = s[0U], max = s[0U];
+
+	for (size_t i = 1U; i < ns; i++) {
+		if (s[i] > max) {
+			max = s[i];
+		} else if (s[i] < min) {
+			min = s[i];
+		}
+	}
+
+	*std = (max - min);
+	*mean = ((s[0U] + s[ns - 1U]) / 2.f + (max + min) / 2.f) / 2.f;
+	return 0;
 }
 
 static int
-_norm_f(alf_t s[], size_t ns)
+_norm_f(alf_t s[], size_t ns, int(*statf)(float*, float*, alf_t[], size_t))
 {
 	float mu, sigma;
 	register __m128 mmu;
 	register __m128 msd;
 
-	if (UNLIKELY(_stats_f(&mu, &sigma, s, ns) < 0)) {
+	if (UNLIKELY(statf(&mu, &sigma, s, ns) < 0)) {
 		return -1;
 	}
 	/* go for (s + -mu) * 1/sigma */
@@ -195,8 +198,8 @@ crosscorrirr(ald_t t1[], alf_t y1[], size_t n1, ald_t t2[], alf_t y2[], size_t n
 	double tau;
 	int best_lag = nlags + 1;
 
-	(void)_norm_f(y1, n1);
-	(void)_norm_f(y2, n2);
+	(void)_norm_f(y1, n1, _quasi_stats_f);
+	(void)_norm_f(y2, n2, _quasi_stats_f);
 
 	tau = _mean_tdiff(t1, n1, t2, n2);
 	with (register double rtau = 1. / tau) {
