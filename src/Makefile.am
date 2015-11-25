@@ -20,6 +20,19 @@ SUFFIXES =
 CLEANFILES += version.c
 EXTRA_DIST += version.c.in
 
+MKL_CFLAGS = -I/opt/intel/mkl/include -mkl -xHost
+MKL_LIBS = -L/opt/intel/mkl/lib/intel64 -Wl,-rpath,/opt/intel/mkl/lib/intel64 -lmkl_rt
+
+
+noinst_PROGRAMS += crosscorrirr
+crosscorrirr_SOURCES = crosscorrirr.c crosscorrirr.yuck
+crosscorrirr_CPPFLAGS = $(AM_CPPFLAGS)
+crosscorrirr_CPPFLAGS += -DSTANDALONE
+crosscorrirr_CPPFLAGS += $(MKL_CFLAGS)
+crosscorrirr_LDFLAGS = $(AM_LDFLAGS)
+crosscorrirr_LDFLAGS += $(MKL_LIBS)
+BUILT_SOURCES += crosscorrirr.yucc
+
 
 ## version rules
 version.c: version.c.in $(top_builddir)/.version
