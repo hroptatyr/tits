@@ -168,9 +168,19 @@ xcf(int lag, ald_t t1[], alf_t y1[], size_t n1, ald_t t2[], alf_t y2[], size_t n
 {
 	double nsum = 0.f;
 	double dsum = 0.f;
+	/* we combine edelson-krolik rectangle with gauss kernel */
+	size_t strt = 0U;
+	size_t strk = 0U;
 
 	for (size_t i = 0U; i < n1; i++) {
-		for (size_t j = 0U; j < n2; j++) {
+		const double kti = (double)lag + t1[i];
+
+		/* find start of the interesting window */
+		for (; strt < n2 && t2[strt] < kti - 1.1; strt++);
+		for (strk = strk < strt ? strt : strk;
+		     strk < n2 && t2[strk] < kti + 1.1; strk++);
+
+		for (size_t j = strt; j < strk; j++) {
 			double K = _krnl_bjoernstad_falck(lag - (t2[j] - t1[i]));
 			dsum += K;
 			nsum += y1[i] * y2[j] * K;
