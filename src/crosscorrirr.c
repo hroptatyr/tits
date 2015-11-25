@@ -59,52 +59,13 @@ static __attribute__((unused)) int
 _quasi_stats_f(float mean[static 1U], float std[static 1U], alf_t s[], size_t ns)
 {
 	float min = s[0U], max = s[0U];
-	register __m128 mmin;
-	register __m128 mmax;
 
-	if (UNLIKELY(ns < 4U)) {
-		*mean = 0.f;
-		switch (ns) {
-		case 3U:
-			*mean += s[ns - 3U];
-		case 2U:
-			*mean += s[ns - 2U];
-		case 1U:
-			*mean += s[ns - 1U];
-		default:
-			*mean /= (float)ns;
-			*std = 1.f;
-			break;
+	for (size_t i = 1U; i < ns; i++) {
+		if (s[i] > max) {
+			max = s[i];
+		} else if (s[i] < min) {
+			min = s[i];
 		}
-		return 0;
-	}
-	mmin = _mm_load_ps(s);
-	mmax = _mm_load_ps(s);
-	for (size_t i = 4U; i + 3U < ns; i += 4U) {
-		register __m128 this;
-
-		this = _mm_load_ps(s + i);
-		mmin = _mm_min_ps(mmin, this);
-		mmax = _mm_max_ps(mmax, this);
-	}
-
-	with (register __m128 tmp) {
-		/* tmp will look like MIN[3] MIN[4] MAX[3] MAX[4] */
-		tmp = _mm_movehl_ps(mmax, mmin);
-		/* mmin will look like MIN[1] MIN[2] MAX[1] MAX[2] */
-		mmin = _mm_movelh_ps(mmin, mmax);
-		mmin = _mm_min_ps(mmin, tmp);
-		mmax = _mm_max_ps(mmax, tmp);
-		/* now mmin holds MIN(MIN[1], MIN[3]) MIN(MIN[2], MIN[4]) ...
-		 * and mmax holds ... MAX(MAX[1], MAX[3]) MAX(MAX[2], MAX[4]) */
-		tmp = _mm_shuffle_ps(mmin, mmax, _MM_SHUFFLE(3,3,1,1));
-		/* tmp is now m(m1m3) m(m1m3) M(M1M3) M(M1M3) */
-		mmin = _mm_min_ps(mmin, tmp);
-		mmax = _mm_max_ps(mmax, tmp);
-		mmax = _mm_movehl_ps(mmax, mmax);
-
-		_mm_store_ss(&min, mmin);
-		_mm_store_ss(&max, mmax);
 	}
 
 	*std = (max - min);
