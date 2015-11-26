@@ -19,6 +19,19 @@ SUFFIXES =
 CLEANFILES += version.c
 EXTRA_DIST += version.c.in
 
+if BUILD_MATCLI
+mexdir = $(MATLABPATH)/cotse
+octlab_CFLAGS = -DMATLAB_MEX_FILE $(matlab_CFLAGS)
+else  !BUILD_MATCLI
+## no idea what we're doing here
+mexdir = $(pkglibexecdir)
+endif  !BUILD_MATCLI
+
+EXTRA_DIST += $(mex_DATA)
+mex_LTLIBRARIES =
+mex_LDFLAGS = -module -shared -avoid-version -shrext ".mexa64"
+mex_DATA =
+
 mkl_CFLAGS = -I/opt/intel/mkl/include -mkl -xHost
 mkl_LIBS = -L/opt/intel/mkl/lib/intel64 -Wl,-rpath,/opt/intel/mkl/lib/intel64 -lmkl_rt
 
@@ -27,6 +40,21 @@ libcotse_la_SOURCES = cotse.h
 libcotse_la_SOURCES += hash.c hash.h
 libcotse_la_SOURCES += version.c version.h
 EXTRA_libcotse_la_DEPENDENCIES = $(LTDLDEPS)
+
+EXTRA_DIST += crosscorrirr.m
+
+if BUILD_MATCLI
+mex_LTLIBRARIES += crosscorrirr_.la
+mex_DATA += crosscorrirr_.m
+crosscorrirr__la_SOURCES = crosscorrirr_.c
+crosscorrirr__la_CPPFLAGS = $(AM_CPPFLAGS)
+crosscorrirr__la_CPPFLAGS += $(octlab_CFLAGS)
+crosscorrirr__la_CPPFLAGS += $(mkl_CFLAGS)
+crosscorrirr__la_LDFLAGS = $(AM_LDFLAGS)
+crosscorrirr__la_LDFLAGS += $(mex_LDFLAGS)
+crosscorrirr__la_LDFLAGS += $(mkl_LIBS)
+crosscorrirr__la_LDFLAGS += $(XCCLDFLAGS)
+endif  BUILD_MATCLI
 
 noinst_PROGRAMS += guess_lag
 guess_lag_SOURCES = guess_lag.c guess_lag.yuck
