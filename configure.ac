@@ -37,6 +37,48 @@ AX_CHECK_YUCK
 AX_YUCK_SCMVER([version.mk])
 AC_CONFIG_LINKS([GNUmakefile:GNUmakefile])
 
+
+SXE_CHECK_DFP754
+## big barf if dfp754 support isn't there
+if test "${sxe_cv_feat_dfp754_literals}" = "no" -o \
+	"${sxe_cv_feat_dfp754_cast_flavour}" = "unknown" -o \
+	"${sxe_cv_feat_dfp754_arith_flavour}" = "unknown" -o \
+	"${sxe_cv_feat_dfp754_literal_flavour}" = "unknown"; then
+	AC_MSG_ERROR([
+Sorry guys.  This project makes extensive use of DFP754 arithmetics.
+If your hardware doesn't support it directly, make sure to instruct
+your compiler (via CFLAGS) to emit calls to libdecimal/libbid and
+turn on dfp754 extensions.
+
+For the Intel C Compiler for instance this is  -intel-extensions
+but it must not be used in conjunction with -std=c99 or -std=c11.
+
+Farewell.
+])
+fi
+
+AC_CHECK_HEADERS([dfp754.h])
+AM_CONDITIONAL([HAVE_DFP754], [test "${ac_cv_header_dfp754_h}" = "yes"])
+
+AC_CHECK_HEADERS([dfp/stdlib.h])
+AM_CONDITIONAL([HAVE_DFP_STDLIB], [test "${ac_cv_header_dfp_stdlib_h}" = "yes"])
+
+AC_CHECK_FUNCS([strtod32])
+AM_CONDITIONAL([HAVE_STRTOD32], [test "${ac_cv_func_strtod32}" = "yes"])
+
+AC_CHECK_FUNCS([quantized32])
+AM_CONDITIONAL([HAVE_QUANTIZED32], [test "${ac_cv_func_quantized32}" = "yes"])
+
+AC_CHECK_FUNCS([scalbnd32])
+AM_CONDITIONAL([HAVE_SCALBND32], [test "${ac_cv_func_scalbnd32}" = "yes"])
+
+save_LDFLAGS="${LDFLAGS}"
+LDFLAGS="${LDFLAGS} -lm"
+AC_CHECK_FUNCS([nand32])
+AC_CHECK_FUNCS([isnand32])
+LDFLAGS="${save_LDFLAGS}"
+
+
 AC_CONFIG_FILES([Makefile])
 AC_CONFIG_FILES([build-aux/Makefile])
 AC_CONFIG_FILES([src/Makefile])
