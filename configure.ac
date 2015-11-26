@@ -78,6 +78,17 @@ AC_CHECK_FUNCS([nand32])
 AC_CHECK_FUNCS([isnand32])
 LDFLAGS="${save_LDFLAGS}"
 
+## check for matlab
+AC_ARG_WITH([matlab], [
+AS_HELP_STRING([--with-matlab], [Build matlab contribs, default: no.])],
+        [with_matlab="${withval}"], [with_matlab="no"])
+
+## the actual checks
+if test "${with_matlab}" = "yes"; then
+	SXE_CHECK_MATLAB
+	have_matlab="yes"
+fi
+AM_CONDITIONAL([BUILD_MATCLI], [test "${have_matlab}" = "yes"])
 
 ## libtool goddess^Wgoodness
 ## has to be down here as we're turning -Werror'ing off
