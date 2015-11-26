@@ -28,17 +28,17 @@ libcotse_la_SOURCES += hash.c hash.h
 libcotse_la_SOURCES += version.c version.h
 EXTRA_libcotse_la_DEPENDENCIES = $(LTDLDEPS)
 
-noinst_PROGRAMS += crosscorrirr
-crosscorrirr_SOURCES = crosscorrirr.c crosscorrirr.yuck
-crosscorrirr_CPPFLAGS = $(AM_CPPFLAGS)
-crosscorrirr_CPPFLAGS += -DSTANDALONE
-crosscorrirr_CPPFLAGS += $(mkl_CFLAGS)
-crosscorrirr_CPPFLAGS += $(dfp754_CFLAGS)
-crosscorrirr_LDFLAGS = $(AM_LDFLAGS)
-crosscorrirr_LDFLAGS += $(mkl_LIBS)
-crosscorrirr_LDFLAGS += $(dfp754_LIBS)
-crosscorrirr_LDADD = libcotse.la
-BUILT_SOURCES += crosscorrirr.yucc
+noinst_PROGRAMS += guess_lag
+guess_lag_SOURCES = guess_lag.c guess_lag.yuck
+guess_lag_CPPFLAGS = $(AM_CPPFLAGS)
+guess_lag_CPPFLAGS += -DSTANDALONE
+guess_lag_CPPFLAGS += $(mkl_CFLAGS)
+guess_lag_CPPFLAGS += $(dfp754_CFLAGS)
+guess_lag_LDFLAGS = $(AM_LDFLAGS)
+guess_lag_LDFLAGS += $(mkl_LIBS)
+guess_lag_LDFLAGS += $(dfp754_LIBS)
+guess_lag_LDADD = libcotse.la
+BUILT_SOURCES += guess_lag.yucc
 
 
 ## version rules
