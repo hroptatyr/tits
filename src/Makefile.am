@@ -23,6 +23,11 @@ EXTRA_DIST += version.c.in
 MKL_CFLAGS = -I/opt/intel/mkl/include -mkl -xHost
 MKL_LIBS = -L/opt/intel/mkl/lib/intel64 -Wl,-rpath,/opt/intel/mkl/lib/intel64 -lmkl_rt
 
+noinst_LTLIBRARIES += libcotse.la
+libcotse_la_SOURCES = cotse.h
+libcotse_la_SOURCES += hash.c hash.h
+libcotse_la_SOURCES += version.c version.h
+EXTRA_libcotse_la_DEPENDENCIES = $(LTDLDEPS)
 
 noinst_PROGRAMS += crosscorrirr
 crosscorrirr_SOURCES = crosscorrirr.c crosscorrirr.yuck
