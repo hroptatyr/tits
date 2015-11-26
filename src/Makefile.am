@@ -3,7 +3,6 @@ include $(top_builddir)/version.mk
 
 AM_CFLAGS = $(EXTRA_CFLAGS)
 AM_CPPFLAGS = -D_POSIX_C_SOURCE=201001L -D_XOPEN_SOURCE=700 -D_BSD_SOURCE
-AM_CPPFLAGS += -D_HAVE_VERSION_H
 AM_LDFLAGS = $(XCCLDFLAGS)
 
 bin_PROGRAMS =
@@ -36,6 +35,7 @@ crosscorrirr_CPPFLAGS += -DSTANDALONE
 crosscorrirr_CPPFLAGS += $(MKL_CFLAGS)
 crosscorrirr_LDFLAGS = $(AM_LDFLAGS)
 crosscorrirr_LDFLAGS += $(MKL_LIBS)
+crosscorrirr_LDADD = libcotse.la
 BUILT_SOURCES += crosscorrirr.yucc
 
 
