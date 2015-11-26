@@ -2,6 +2,7 @@
 # include "config.h"
 #endif	/* HAVE_CONFIG_H */
 #include <stddef.h>
+#include <stdbool.h>
 #include <math.h>
 #include <mkl.h>
 #include <mkl_vml.h>
@@ -9,33 +10,12 @@
 #include <immintrin.h>
 #include "nifty.h"
 
+#define NSECS	(1000000000)
+
 typedef float alf_t __attribute__((aligned(16)));
 typedef double ald_t __attribute__((aligned(16)));
 
-#if 0
-static double
-ccf_gauss(int k, unsigned int res, cots_ts_t *xt, cots_ts_t *yt, cots_pf_t *xp, cots_pf_t *yp, size_t nx, size_t ny)
-{
-	double rho = 0.d;
-	double quo = 0.d;
-
-	for (size_t i = 0U; i < nx; i++) {
-		for (size_t j = 0U; j < ny; j++) {
-			double bk = labs(ts_diff(xt[i], yt[j]) - k);
-			quo += _krnl_gauss(bk);
-		}
-	}
-
-	for (size_t i = 0U; i < nx; i++) {
-		for (size_t j = 0U; j < ny; j++) {
-			double bk = labs(ts_diff(xt[i], yt[j]) - k);
-			xp[i] * yp[j] * _krnl_gauss(bk, );
-		}
-	}
-	return rho;
-}
-#endif
-
+
 static __attribute__((unused)) int
 _stats_f(float mean[static 1U], float std[static 1U], alf_t s[], size_t ns)
 {
@@ -192,6 +172,7 @@ xcf(int lag, ald_t t1[], alf_t y1[], size_t n1, ald_t t2[], alf_t y2[], size_t n
 	return nsum / dsum;
 }
 
+
 static double
 crosscorrirr(ald_t t1[], alf_t y1[], size_t n1, ald_t t2[], alf_t y2[], size_t n2, int nlags)
 {
@@ -221,19 +202,299 @@ crosscorrirr(ald_t t1[], alf_t y1[], size_t n1, ald_t t2[], alf_t y2[], size_t n
 
 
 #if defined STANDALONE
+#include <string.h>
+#include <stdio.h>
+#if defined HAVE_DFP754_H
+# include <dfp754.h>
+#elif defined HAVE_DFP_STDLIB_H
+# include <dfp/stdlib.h>
+#endif	/* HAVE_DFP754_H */
+#include "hash.h"
+
+typedef long unsigned int tv_t;
+typedef _Decimal32 px_t;
+#define strtopx		strtod32
+
+typedef struct {
+	size_t n;
+	tv_t *t;
+	px_t *p;
+} book_t;
+
+static size_t zsrc;
+static size_t nsrc;
+static const char **src;
+static struct {
+	book_t bid;
+	book_t ask;
+} *book;
+static tv_t metr;
+
+static book_t
+make_book(void)
+{
+#define MAX_TICKS	(4096U)
+	book_t res = {
+		.n = 0U,
+		.t = calloc(MAX_TICKS, sizeof(*res.t)),
+		.p = calloc(MAX_TICKS, sizeof(*res.p)),
+	};
+	return res;
+}
+
+static book_t
+book_slid(book_t b)
+{
+	size_t nun = (b.n + 1U) / 2U;
+
+	b.n -= nun;
+	memcpy(b.t, b.t + nun, b.n * sizeof(*b.t));
+	memcpy(b.p, b.p + nun, b.n * sizeof(*b.p));
+	return b;
+}
+
+static inline bool
+book_full_p(book_t b)
+{
+	return b.n >= MAX_TICKS;
+}
+
+static void
+push(const char *line, size_t UNUSED(llen))
+{
+	static struct {
+		hx_t h;
+		size_t i;
+	} *hxs;
+	size_t k;
+	px_t b;
+	px_t a;
+	char *on;
+
+	/* time value up first */
+	with (long unsigned int s, x) {
+		if (line[20U] != '\t') {
+			return;
+		} else if (!(s = strtoul(line, &on, 10))) {
+			return;
+		} else if (*on++ != '.') {
+			return;
+		} else if ((x = strtoul(on, &on, 10), *on != '\t')) {
+			return;
+		}
+		metr = s * NSECS + x;
+	}
+
+	/* now comes the ECN */
+	with (const char *ecn = ++on) {
+		size_t hk;
+		hx_t hx;
+
+		if (UNLIKELY((on = strchr(ecn, '\t')) == NULL)) {
+			return;
+		} else if (UNLIKELY(!(hx = hash(ecn, on - ecn)))) {
+			/* fuck */
+			return;
+		} else if (UNLIKELY(!zsrc)) {
+			zsrc = 16U;
+			hxs = calloc(zsrc, sizeof(*hxs));
+			src = calloc(zsrc, sizeof(*src));
+			book = calloc(zsrc, sizeof(*book));
+		}
+	ass:
+		/* assign slot */
+		hk = hx % zsrc;
+		if (UNLIKELY(!hxs[hk].h)) {
+			/* empty, phew */
+			hxs[hk] = (typeof(*hxs)){hx, k = nsrc++};
+			src[k] = strndup(ecn, on - ecn);
+			book[k].bid = make_book();
+			book[k].ask = make_book();
+		} else if (LIKELY(hxs[hk].h == hx)) {
+			/* all's well */
+			k = hxs[hk].i;
+		} else if (UNLIKELY((hk = (hk + 1U) % zsrc, !hxs[hk].h))) {
+			/* lucky again, innit? */
+			hxs[hk] = (typeof(*hxs)){hx, k = nsrc++};
+			src[k] = strndup(ecn, on - ecn);
+			book[k].bid = make_book();
+			book[k].ask = make_book();
+		} else if (LIKELY(hxs[hk].h == hx)) {
+			/* okey doke */
+			k = hxs[hk].i;
+		} else if (LIKELY(zsrc *= 2U)) {
+			/* resize */
+			typeof(hxs) nuh = calloc(zsrc, sizeof(*hxs));
+			typeof(src) nuv = calloc(zsrc, sizeof(*src));
+			typeof(book) nub = calloc(zsrc, sizeof(*book));
+
+			for (size_t i = 0U; i < zsrc / 2U; i++) {
+				const hx_t oh = hxs[i].h;
+				size_t j = oh % zsrc;
+
+				if (LIKELY(!oh)) {
+					continue;
+				} else if (!nuh[j].h) {
+					;
+				} else if ((j = (j + 1U) % zsrc, !nuh[j].h)) {
+					;
+				} else {
+					/* what now? */
+					abort();
+				}
+				nuh[j] = hxs[i];
+			}
+			free(hxs);
+			hxs = nuh;
+
+			memcpy(nuv, src, nsrc * sizeof(*nuv));
+			memcpy(nub, book, nsrc * sizeof(*nub));
+			free(src);
+			free(book);
+			src = nuv;
+			book = nub;
+			goto ass;
+		}
+	}
+
+	if (*++on != '\t' && (b = strtopx(on, &on))) {
+#define BOOK	(book[k].bid)
+		if (UNLIKELY(book_full_p(BOOK))) {
+			BOOK = book_slid(BOOK);
+		}
+		BOOK.t[BOOK.n] = metr;
+		BOOK.p[BOOK.n] = b;
+		BOOK.n++;
+#undef BOOK
+	}
+	if (*++on != '\t' && (a = strtopx(on, &on))) {
+#define BOOK	(book[k].ask)
+		if (UNLIKELY(book_full_p(BOOK))) {
+			BOOK = book_slid(BOOK);
+		}
+		BOOK.t[BOOK.n] = metr;
+		BOOK.p[BOOK.n] = a;
+		BOOK.n++;
+#undef BOOK
+	}
+	return;
+}
+
+static void
+prep_book(ald_t t[], alf_t p[], book_t b, tv_t tref)
+{
+	for (size_t i = 0U; i < b.n; i++) {
+		t[i] = (double)(b.t[i] - tref) / (double)NSECS;
+		p[i] = (float)b.p[i];
+	}
+	return;
+}
+
+static void
+skim(void)
+{
+#define EDG_TICKS	(3U * MAX_TICKS / 4U)
+#define LOW_TICKS	(2U * MAX_TICKS / 4U)
+	static ald_t t1[MAX_TICKS];
+	static alf_t p1[MAX_TICKS];
+	static ald_t t2[MAX_TICKS];
+	static alf_t p2[MAX_TICKS];
+
+	for (size_t i = 0U; i < nsrc; i++) {
+		bool iinitp = false;
+		size_t n1;
+		tv_t tref;
+
+		if ((n1 = book[i].bid.n) != EDG_TICKS) {
+			continue;
+		}
+		for (size_t j = 0U; j < nsrc; j++) {
+			double lag;
+			size_t n2;
+
+			if (i == j) {
+				continue;
+			} else if (j < i && book[j].bid.n == EDG_TICKS) {
+				continue;
+			} else if ((n2 = book[j].bid.n) < LOW_TICKS) {
+				continue;
+			} else if (!iinitp) {
+				tref = book[i].bid.t[0U];
+				prep_book(t1, p1, book[i].bid, tref);
+				iinitp = true;
+			}
+			/* yep, do a i,j lead/lag run */
+			prep_book(t2, p2, book[j].bid, tref);
+
+			lag = crosscorrirr(t1, p1, n1, t2, p2, n2, 64);
+			printf("%lu.%09lu\tBID\t%s\t%s\t%g\n",
+			       metr / NSECS, metr % NSECS,
+			       src[i], src[j], lag);
+		}
+	}
+
+	for (size_t i = 0U; i < nsrc; i++) {
+		bool iinitp = false;
+		size_t n1;
+		tv_t tref;
+
+		if ((n1 = book[i].ask.n) != EDG_TICKS) {
+			continue;
+		}
+		for (size_t j = 0U; j < nsrc; j++) {
+			double lag;
+			size_t n2;
+
+			if (i == j) {
+				continue;
+			} else if (j < i && book[j].ask.n == EDG_TICKS) {
+				continue;
+			} else if ((n2 = book[j].ask.n) < LOW_TICKS) {
+				continue;
+			} else if (!iinitp) {
+				tref = book[i].ask.t[0U];
+				prep_book(t1, p1, book[i].ask, tref);
+				iinitp = true;
+			}
+			/* yep, do a i,j lead/lag run */
+			prep_book(t2, p2, book[j].ask, tref);
+
+			lag = crosscorrirr(t1, p1, n1, t2, p2, n2, 64);
+			printf("%lu.%09lu\tASK\t%s\t%s\t%g\n",
+			       metr / NSECS, metr % NSECS,
+			       src[i], src[j], lag);
+		}
+	}
+	return;
+}
+#endif	/* STANDALONE */
+
+
+#if defined STANDALONE
 #include "crosscorrirr.yucc"
 
 int
 main(int argc, char *argv[])
 {
-//#	include "crosscorrirr_test_01.c"
-#	include "crosscorrirr_test_02.c"
-	double x;
+	static yuck_t argi[1U];
+	char *line = NULL;
+	size_t llen = 0U;
+	int rc = 0;
 
-	x = crosscorrirr(tx, px, countof(tx), ty, py, countof(py), 80);
-	printf("lag\t%g\n", x);
-	return 0;
+	if (yuck_parse(argi, argc, argv) < 0) {
+		rc = 1;
+		goto out;
+	}
+
+	for (ssize_t nrd; (nrd = getline(&line, &llen, stdin)) > 0;) {
+		push(line, nrd);
+		skim();
+	}
+	free(line);
+out:
+	yuck_free(argi);
+	return rc;
 }
 #endif	/* STANDALONE */
 
-/* cots-delay.c ends here */
+/* crosscorrirr.c ends here */

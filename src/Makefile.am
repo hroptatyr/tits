@@ -19,8 +19,8 @@ SUFFIXES =
 CLEANFILES += version.c
 EXTRA_DIST += version.c.in
 
-MKL_CFLAGS = -I/opt/intel/mkl/include -mkl -xHost
-MKL_LIBS = -L/opt/intel/mkl/lib/intel64 -Wl,-rpath,/opt/intel/mkl/lib/intel64 -lmkl_rt
+mkl_CFLAGS = -I/opt/intel/mkl/include -mkl -xHost
+mkl_LIBS = -L/opt/intel/mkl/lib/intel64 -Wl,-rpath,/opt/intel/mkl/lib/intel64 -lmkl_rt
 
 noinst_LTLIBRARIES += libcotse.la
 libcotse_la_SOURCES = cotse.h
@@ -32,9 +32,11 @@ noinst_PROGRAMS += crosscorrirr
 crosscorrirr_SOURCES = crosscorrirr.c crosscorrirr.yuck
 crosscorrirr_CPPFLAGS = $(AM_CPPFLAGS)
 crosscorrirr_CPPFLAGS += -DSTANDALONE
-crosscorrirr_CPPFLAGS += $(MKL_CFLAGS)
+crosscorrirr_CPPFLAGS += $(mkl_CFLAGS)
+crosscorrirr_CPPFLAGS += $(dfp754_CFLAGS)
 crosscorrirr_LDFLAGS = $(AM_LDFLAGS)
-crosscorrirr_LDFLAGS += $(MKL_LIBS)
+crosscorrirr_LDFLAGS += $(mkl_LIBS)
+crosscorrirr_LDFLAGS += $(dfp754_LIBS)
 crosscorrirr_LDADD = libcotse.la
 BUILT_SOURCES += crosscorrirr.yucc
 
