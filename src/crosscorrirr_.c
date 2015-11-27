@@ -91,6 +91,7 @@ typedef struct {
 } ats_t;
 
 
+#if 0
 static __attribute__((unused)) int
 _stats_d(double mean[static 1U], double std[static 1U], ald_t s[], size_t ns)
 {
@@ -109,6 +110,27 @@ _stats_d(double mean[static 1U], double std[static 1U], ald_t s[], size_t ns)
 	return rc;
 #undef VSL_SS_TASK
 }
+#else
+static __attribute__((unused)) int
+_stats_d(double mean[static 1U], double std[static 1U], ald_t s[], size_t ns)
+{
+	double sum;
+
+	sum = 0.;
+	for (size_t i = 0U; i < ns; i++) {
+		sum += s[i];
+	}
+	*mean = sum / (double)ns;
+
+	sum = 0.;
+	for (size_t i = 0U; i < ns; i++) {
+		double tmp = (s[i] - *mean);
+		sum += tmp * tmp;
+	}
+	*std = sqrt(sum / (double)ns);
+	return 0;
+}
+#endif
 
 static __attribute__((unused)) int
 _quasi_stats_d(double mean[static 1U], double std[static 1U], ald_t s[], size_t ns)
