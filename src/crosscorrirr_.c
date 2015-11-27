@@ -178,7 +178,7 @@ _dscal(ald_t s[], size_t ns, double f)
 	register __mXd mf = _mmX_broadcast_sd(&f);
 
 #define INC	(widthof(__mXd))
-	for (size_t i = 0U; i + INC < ns; i += INC) {
+	for (size_t i = 0U; i + INC - 1U < ns; i += INC) {
 		register __mXd ms;
 		ms = _mmX_load_pd(s + i);
 		ms = _mmX_mul_pd(ms, mf);
