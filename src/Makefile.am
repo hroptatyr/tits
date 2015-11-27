@@ -33,7 +33,7 @@ mex_LDFLAGS = -module -shared -avoid-version -shrext ".mexa64"
 mex_DATA =
 
 mkl_CFLAGS = -I/opt/intel/mkl/include -mkl -xHost
-mkl_LIBS =
+mkl_LIBS = -L/opt/intel/mkl/lib/intel64 -Wl,-rpath,/opt/intel/mkl/lib/intel64 -lmkl_rt
 
 noinst_LTLIBRARIES += libcotse.la
 libcotse_la_SOURCES = cotse.h
