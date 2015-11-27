@@ -39,6 +39,7 @@
 #endif	/* HAVE_CONFIG_H */
 #include <mex.h>
 #include <stddef.h>
+#include <string.h>
 #include <stdbool.h>
 #include <math.h>
 #include <mkl.h>
@@ -251,10 +252,14 @@ samples (y2) and sample times (t2) must have same dimension");
 	}
 
 	/* snarf input */
-	t1 = mxGetPr(prhs[0U]);
-	t2 = mxGetPr(prhs[2U]);
-	y1 = mxGetPr(prhs[1U]);
-	y2 = mxGetPr(prhs[3U]);
+	t1 = mxMalloc(n1 * sizeof(*t1));
+	y1 = mxMalloc(n1 * sizeof(*y1));
+	t2 = mxMalloc(n2 * sizeof(*t2));
+	y2 = mxMalloc(n2 * sizeof(*y2));
+	memcpy(t1, mxGetPr(prhs[0U]), n1 * sizeof(*t1));
+	memcpy(y1, mxGetPr(prhs[1U]), n1 * sizeof(*y1));
+	memcpy(t2, mxGetPr(prhs[2U]), n2 * sizeof(*t2));
+	memcpy(y2, mxGetPr(prhs[3U]), n2 * sizeof(*y2));
 
 	(void)_norm_d(y1, n1, _stats_d);
 	(void)_norm_d(y2, n2, _stats_d);
@@ -274,6 +279,11 @@ samples (y2) and sample times (t2) must have same dimension");
 			lags[i] = (double)k;
 		}
 	}
+
+	mxFree(t1);
+	mxFree(t2);
+	mxFree(y1);
+	mxFree(y2);
 	return;
 }
 
