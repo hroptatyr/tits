@@ -409,7 +409,7 @@ samples (y2) and sample times (t2) must have same dimension");
 	tgt = mxGetPr(*plhs);
 
 	/* beef */
-	with (double *t1 = mxGetPr(prhs[0U]), *y1 = mxGetPr(prhs[1U]),
+	with (const double *t1 = mxGetPr(prhs[0U]), *y1 = mxGetPr(prhs[1U]),
 	      *t2 = mxGetPr(prhs[2U]), *y2 = mxGetPr(prhs[3U])) {
 		cots_xcor(
 			tgt, &tau,
@@ -429,7 +429,6 @@ samples (y2) and sample times (t2) must have same dimension");
 	if (nlhs > 2) {
 		plhs[2U] = mxCreateDoubleScalar(tau);
 	}
-
 	return;
 }
 
