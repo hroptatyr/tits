@@ -338,10 +338,10 @@ samples (y2) and sample times (t2) must have same dimension");
 	}
 
 	/* snarf input */
-	t1 = mxMalloc(n1 * sizeof(*t1));
-	y1 = mxMalloc(n1 * sizeof(*y1));
-	t2 = mxMalloc(n2 * sizeof(*t2));
-	y2 = mxMalloc(n2 * sizeof(*y2));
+	t1 = _mm_malloc(n1 * sizeof(*t1), sizeof(__mXd));
+	y1 = _mm_malloc(n1 * sizeof(*y1), sizeof(__mXd));
+	t2 = _mm_malloc(n2 * sizeof(*t2), sizeof(__mXd));
+	y2 = _mm_malloc(n2 * sizeof(*y2), sizeof(__mXd));
 	memcpy(t1, mxGetPr(prhs[0U]), n1 * sizeof(*t1));
 	memcpy(y1, mxGetPr(prhs[1U]), n1 * sizeof(*y1));
 	memcpy(t2, mxGetPr(prhs[2U]), n2 * sizeof(*t2));
@@ -366,10 +366,10 @@ samples (y2) and sample times (t2) must have same dimension");
 		}
 	}
 
-	mxFree(t1);
-	mxFree(t2);
-	mxFree(y1);
-	mxFree(y2);
+	_mm_free(t1);
+	_mm_free(t2);
+	_mm_free(y1);
+	_mm_free(y2);
 	return;
 }
 
