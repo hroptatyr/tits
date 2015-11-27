@@ -271,6 +271,10 @@ mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 		mexErrMsgTxt("\
 not enough input arguments, see `help crosscorrirr_'");
 		return;
+	} else if (nlhs > 2) {
+		mexErrMsgTxt("\
+too many output arguments, see `help crosscorrirr_'");
+		return;
 	} else if (!mxIsDouble(prhs[0U]) || !mxIsDouble(prhs[1U]) ||
 		   !mxIsDouble(prhs[2U]) || !mxIsDouble(prhs[3U])) {
 		mexErrMsgTxt("sampled times and values must be doubles");
