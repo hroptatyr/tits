@@ -50,6 +50,8 @@
 
 typedef double ald_t __attribute__((aligned(16)));
 
+#define widthof(x)	(sizeof(x) / sizeof(double))
+
 
 static __attribute__((unused)) int
 _stats_d(double mean[static 1U], double std[static 1U], ald_t s[], size_t ns)
@@ -91,6 +93,7 @@ _quasi_stats_d(double mean[static 1U], double std[static 1U], ald_t s[], size_t 
 static int
 _norm_d(ald_t s[], size_t ns, int(*statf)(double*, double*, ald_t[], size_t))
 {
+/* calculate (s - mean(s)) / std(s) */
 	double mu, sigma;
 	register __m128d mmu;
 	register __m128d msd;
@@ -98,12 +101,14 @@ _norm_d(ald_t s[], size_t ns, int(*statf)(double*, double*, ald_t[], size_t))
 	if (UNLIKELY(statf(&mu, &sigma, s, ns) < 0)) {
 		return -1;
 	}
+
 	/* go for (s + -mu) * 1/sigma */
 	mu = -mu;
 	mmu = _mm_load1_pd(&mu);
-	sigma = 1.f / sigma;
+	sigma = 1. / sigma;
 	msd = _mm_load1_pd(&sigma);
-	for (size_t i = 0U; i + 1U < ns; i += 2U) {
+#define INC	(widthof(__m128d))
+	for (size_t i = 0U; i + INC - 1U < ns; i += INC) {
 		register __m128d ms;
 		ms = _mm_load_pd(s + i);
 		ms = _mm_add_pd(ms, mmu);
@@ -111,14 +116,50 @@ _norm_d(ald_t s[], size_t ns, int(*statf)(double*, double*, ald_t[], size_t))
 		_mm_store_pd(s + i, ms);
 	}
 	/* do the rest by hand */
-	switch (ns % 4U) {
+	switch (ns % INC) {
+	case 3U:
+		s[ns - 3U] += mu;
+		s[ns - 3U] *= sigma;
+	case 2U:
+		s[ns - 2U] += mu;
+		s[ns - 2U] *= sigma;
 	case 1U:
-		s[0U] += mu;
-		s[0U] *= sigma;
+		s[ns - 1U] += mu;
+		s[ns - 1U] *= sigma;
 	case 0U:
 	default:
 		break;
 	}
+#undef INC
+	return 0;
+}
+
+static int
+_dscal(ald_t s[], size_t ns, double f)
+{
+/* calculate f * s */
+	register __m128d mf = _mm_load1_pd(&f);
+
+#define INC	(widthof(__m128d))
+	for (size_t i = 0U; i + INC < ns; i += INC) {
+		register __m128d ms;
+		ms = _mm_load_pd(s + i);
+		ms = _mm_mul_pd(ms, mf);
+		_mm_store_pd(s + i, ms);
+	}
+	/* do the rest by hand */
+	switch (ns % INC) {
+	case 3U:
+		s[ns - 3U] *= f;
+	case 2U:
+		s[ns - 2U] *= f;
+	case 1U:
+		s[ns - 1U] *= f;
+	case 0U:
+	default:
+		break;
+	}
+#undef INC
 	return 0;
 }
 
@@ -266,8 +307,8 @@ samples (y2) and sample times (t2) must have same dimension");
 
 	tau = _mean_tdiff(t1, n1, t2, n2);
 	with (register double rtau = 1. / tau) {
-		cblas_dscal(n1, rtau, t1, 1U);
-		cblas_dscal(n2, rtau, t2, 1U);
+		_dscal(t1, n1, rtau);
+		_dscal(t2, n2, rtau);
 	}
 	if (nlhs > 2) {
 		plhs[2U] = mxCreateDoubleScalar(tau);
