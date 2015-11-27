@@ -171,84 +171,6 @@ _dscal(ald_t s[], size_t ns, double f)
 }
 
 
-static long int
-_gcd_l(long int x, long int y)
-{
-/* euklid's gcd */
-	while (y) {
-		long int tmp = y;
-		y = x % y;
-		x = tmp;
-	}
-	return x;
-}
-
-static double
-_gcd_d(double x, double y)
-{
-/* euklid's gcd for quotients */
-	/* separate X into XI + 1/XD and Y into YI + 1/YD
-	 * then use long int gcd */
-	double xi = trunc(x);
-	double yi = trunc(y);
-	long int xd = 1;
-	long int yd = 1;
-	long int xn;
-	long int yn;
-	long int dd;
-	long int dn;
-
-	x -= xi;
-	y -= yi;
-
-	xn = (long int)xi;
-	yn = (long int)yi;
-
-	/* as a proxy for XD we use trunc(XD) */
-	if (x > __DBL_EPSILON__) {
-		xd = (long int)(1. / x);
-		xn *= xd;
-		xn++;
-	}
-	if (y > __DBL_EPSILON__) {
-		yd = (long int)(1. / y);
-		yn *= yd;
-		yn++;
-	}
-	/* yay, we can finally calc the lcm denominator */
-	dd = (xd * yd) / _gcd_l(xd, yd);
-	/* now fiddle with the numerators */
-	xn *= dd / xd;
-	yn *= dd / yd;
-
-	/* finally gcd the numerators and we're done */
-	dn = _gcd_l(xn, yn);
-	return (double)dn / (double)dd;
-}
-
-static double
-_mean_tdiff(const ald_t t1[], size_t n1, const ald_t t2[], size_t n2)
-{
-/* calculate average time differences
- * gcd(mean(t1[i] - t1[i-1]), mean(t2[j], t2[j - 1])) */
-	double tau1, tau2;
-	double sum;
-
-	sum = 0.;
-	for (size_t i = 1U; i < n1; i++) {
-		sum += t1[i] - t1[i - 1];
-	}
-	tau1 = sum / (double)(n1 - 1U);
-
-	sum = 0.;
-	for (size_t j = 1U; j < n2; j++) {
-		sum += t2[j] - t2[j - 1];
-	}
-	tau2 = sum / (double)(n2 - 1U);
-
-	return _gcd_d(tau1, tau2);
-}
-
 static double
 _krnl_bjoernstad_falck(double ktij)
 {
@@ -290,8 +212,9 @@ xcf(int lag, ats_t ts1, ats_t ts2)
 
 static int
 cots_xcor(
-	double *restrict tgt, double tau[static 1U],
-	una_ts_t ts1, una_ts_t ts2, int nlags)
+	double *restrict tgt,
+	una_ts_t ts1, una_ts_t ts2,
+	int nlags, double tau)
 {
 	size_t n1, n2;
 	ald_t *t1, *t2;
@@ -319,10 +242,7 @@ cots_xcor(
 	(void)_norm_d(y1, n1, _stats_d);
 	(void)_norm_d(y2, n2, _stats_d);
 
-	if (*tau <= 0.) {
-		*tau = _mean_tdiff(t1, n1, t2, n2);
-	}
-	with (register double rtau = 1. / *tau) {
+	with (register double rtau = 1. / tau) {
 		_dscal(t1, n1, rtau);
 		_dscal(t2, n2, rtau);
 	}
@@ -347,31 +267,33 @@ mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 	double *tgt;
 	size_t n1, n2;
 
-	if (nrhs < 4 || !nlhs ||
-	    !mxIsDouble(prhs[0U]) || !mxIsDouble(prhs[1U]) ||
-	    !mxIsDouble(prhs[2U]) || !mxIsDouble(prhs[3U])) {
-		mexErrMsgTxt("invalid usage, see `help crosscorrirr_'");
+	if (nrhs < 5) {
+		mexErrMsgTxt("\
+not enough input arguments, see `help crosscorrirr_'");
+		return;
+	} else if (!mxIsDouble(prhs[0U]) || !mxIsDouble(prhs[1U]) ||
+		   !mxIsDouble(prhs[2U]) || !mxIsDouble(prhs[3U])) {
+		mexErrMsgTxt("sampled times and values must be doubles");
+		return;
+	}
+	if (!mxIsNumeric(prhs[4U])) {
+		mexErrMsgTxt("tau must be a number");
+		return;
+	} else if ((tau = mxGetScalar(prhs[4U])) <= 0.) {
+		mexErrMsgTxt("tau must be positive");
 		return;
 	}
 
-	if (nrhs > 4) {
-		if (!mxIsNumeric(prhs[4U])) {
+	if (nrhs > 5) {
+		if (!mxIsNumeric(prhs[5U])) {
 			mexErrMsgTxt("number of lags parameter must be a number");
 			return;
-		} else if ((nlags = (int)mxGetScalar(prhs[4U])) < 0) {
+		} else if ((nlags = (int)mxGetScalar(prhs[5U])) < 0) {
 			mexErrMsgTxt("number of lags must be non-negative");
 			return;
 		}
 	}
-	if (nrhs > 5) {
-		if (!mxIsNumeric(prhs[5U])) {
-			mexErrMsgTxt("tau must be a number");
-			return;
-		} else if ((tau = mxGetScalar(prhs[5U])) <= 0.) {
-			mexErrMsgTxt("tau must be positive");
-			return;
-		}
-	}
+
 	/* get the inputs */
 	if ((n1 = mxGetM(prhs[0U])) != 1U && mxGetN(prhs[0U]) != 1U ||
 	    n1 == 1U && !(n1 = mxGetN(prhs[0U]))) {
@@ -412,9 +334,9 @@ samples (y2) and sample times (t2) must have same dimension");
 	with (const double *t1 = mxGetPr(prhs[0U]), *y1 = mxGetPr(prhs[1U]),
 	      *t2 = mxGetPr(prhs[2U]), *y2 = mxGetPr(prhs[3U])) {
 		cots_xcor(
-			tgt, &tau,
+			tgt,
 			(una_ts_t){n1, t1, y1}, (una_ts_t){n2, t2, y2},
-			nlags);
+			nlags, tau);
 	}
 
 	if (nlhs > 1) {
@@ -425,9 +347,6 @@ samples (y2) and sample times (t2) must have same dimension");
 		for (int k = -nlags, i = 0; k <= nlags; k++, i++) {
 			lags[i] = (double)k * tau;
 		}
-	}
-	if (nlhs > 2) {
-		plhs[2U] = mxCreateDoubleScalar(tau);
 	}
 	return;
 }
