@@ -331,7 +331,7 @@ samples (y1) and sample times (t1) must have same dimension");
 		    tmp == 1U && !(tmp = mxGetN(prhs[3U]))) {
 			mexErrMsgTxt("samples (y2) must be a vector");
 			return;
-		} else if (tmp != n1) {
+		} else if (tmp != n2) {
 			mexErrMsgTxt("\
 samples (y2) and sample times (t2) must have same dimension");
 			return;
