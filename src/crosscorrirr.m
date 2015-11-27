@@ -122,8 +122,9 @@ function varargout = crosscorrirr(t1, y1, t2, y2, N, S)
 	y1 = (y1 - mean(y1)) / std(y1);
 	y2 = (y2 - mean(y2)) / std(y2);
 
-	txy = sort([t1; t2]);
-	tau = mean(txy(2:end) - txy(1:end-1));
+	tau1 = mean(t1(2:end) - t1(1:end-1));
+	tau2 = mean(t2(2:end) - t2(1:end-1));
+	tau = tau1 * tau2;
 	t1 = t1 ./ tau;
 	t2 = t2 ./ tau;
 

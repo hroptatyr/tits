@@ -123,43 +123,25 @@ _norm_d(ald_t s[], size_t ns, int(*statf)(double*, double*, ald_t[], size_t))
 
 
 static double
-_mean_tdiff(ald_t t1[], size_t n1, ald_t t2[], size_t n2)
+_mean_tdiff(const ald_t t1[], size_t n1, const ald_t t2[], size_t n2)
 {
 /* calculate average time differences
- * min(t1[i], t2[j]) - min(t1[i - 1], t2[j - 1]) */
-	double sum = 0.0;
-	double prev;
-	size_t i, j;
+ * mean(t1[i] - t1[i-1]) * mean(t2[j], t2[j - 1]) */
+	double tau1, tau2;
+	double sum;
 
-	if (*t1 <= *t2) {
-		i = 1U;
-		j = 0U;
-		prev = *t1;
-	} else {
-		i = 0U;
-		j = 1U;
-		prev = *t2;
+	sum = 0.;
+	for (size_t i = 1U; i < n1; i++) {
+		sum += t1[i] - t1[i - 1];
 	}
-	while (i < n1 && j < n2) {
-		if (t1[i] <= t2[j]) {
-			sum += t1[i] - prev;
-			prev = t1[i++];
-		} else {
-			sum += t2[j] - prev;
-			prev = t2[j++];
-		}
+	tau1 = sum / (double)(n1 - 1U);
+
+	sum = 0.;
+	for (size_t j = 1U; j < n2; j++) {
+		sum += t2[j] - t2[j - 1];
 	}
-	/* remainder of t1 */
-	while (i < n1) {
-		sum += t1[i] - prev;
-		prev = t1[i++];
-	}
-	/* remainder of t2 */
-	while (j < n2) {
-		sum += t2[j] - prev;
-		prev = t2[j++];
-	}
-	return sum / (double)(n1 + n2 - 1U);
+	tau2 = sum / (double)(n2 - 1U);
+	return tau1 * tau2;
 }
 
 static double
