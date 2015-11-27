@@ -413,7 +413,7 @@ samples (y2) and sample times (t2) must have same dimension");
 		plhs[1U] = mxCreateDoubleMatrix(1, 2 * nlags + 1, mxREAL);
 		lags = mxGetPr(plhs[1U]);
 		for (int k = -nlags, i = 0; k <= nlags; k++, i++) {
-			lags[i] = (double)k;
+			lags[i] = (double)k * tau;
 		}
 	}
 
