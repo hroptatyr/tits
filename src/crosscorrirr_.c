@@ -171,11 +171,66 @@ _dscal(ald_t s[], size_t ns, double f)
 }
 
 
+static long int
+_gcd_l(long int x, long int y)
+{
+/* euklid's gcd */
+	while (y) {
+		long int tmp = y;
+		y = x % y;
+		x = tmp;
+	}
+	return x;
+}
+
+static double
+_gcd_d(double x, double y)
+{
+/* euklid's gcd for quotients */
+	/* separate X into XI + 1/XD and Y into YI + 1/YD
+	 * then use long int gcd */
+	double xi = trunc(x);
+	double yi = trunc(y);
+	long int xd = 1;
+	long int yd = 1;
+	long int xn;
+	long int yn;
+	long int dd;
+	long int dn;
+
+	x -= xi;
+	y -= yi;
+
+	xn = (long int)xi;
+	yn = (long int)yi;
+
+	/* as a proxy for XD we use trunc(XD) */
+	if (x > __DBL_EPSILON__) {
+		xd = (long int)(1. / x);
+		xn *= xd;
+		xn++;
+	}
+	if (y > __DBL_EPSILON__) {
+		yd = (long int)(1. / y);
+		yn *= yd;
+		yn++;
+	}
+	/* yay, we can finally calc the lcm denominator */
+	dd = (xd * yd) / _gcd_l(xd, yd);
+	/* now fiddle with the numerators */
+	xn *= dd / xd;
+	yn *= dd / yd;
+
+	/* finally gcd the numerators and we're done */
+	dn = _gcd_l(xn, yn);
+	return (double)dn / (double)dd;
+}
+
 static double
 _mean_tdiff(const ald_t t1[], size_t n1, const ald_t t2[], size_t n2)
 {
 /* calculate average time differences
- * mean(t1[i] - t1[i-1]) * mean(t2[j], t2[j - 1]) */
+ * gcd(mean(t1[i] - t1[i-1]), mean(t2[j], t2[j - 1])) */
 	double tau1, tau2;
 	double sum;
 
@@ -190,7 +245,8 @@ _mean_tdiff(const ald_t t1[], size_t n1, const ald_t t2[], size_t n2)
 		sum += t2[j] - t2[j - 1];
 	}
 	tau2 = sum / (double)(n2 - 1U);
-	return tau1 * tau2;
+
+	return _gcd_d(tau1, tau2);
 }
 
 static double
