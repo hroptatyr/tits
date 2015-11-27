@@ -3,8 +3,9 @@ function varargout = crosscorrirr(t1, y1, t2, y2, N, S)
 %
 %  Syntax:
 %
-%    [xcf, lags, tau, bounds] = crosscorrirr(t1, y1, t2, y2)
-%    [xcf, lags, tau, bounds] = crosscorrirr(t1, y1, t2, y2, numLags, numSTD)
+%    [xcf, lags, tau] = crosscorrirr(t1, y1, t2, y2)
+%    [xcf, lags, tau] = crosscorrirr(t1, y1, t2, y2, numLags)
+%    [xcf, lags, tau] = crosscorrirr(t1, y1, t2, y2, numLags, tau)
 %
 % Description:
 %
@@ -30,10 +31,9 @@ function varargout = crosscorrirr(t1, y1, t2, y2, N, S)
 %     lags 0, +/-1, +/-2,...,+/-T, where T is the minimum of 20 or one less
 %     than the length of the shortest series.
 %
-%   numSTD - Positive scalar indicating the number of standard deviations
-%     of the sample XCF estimation error to compute assuming y1/y2 are
-%     uncorrelated. If empty or missing, the default is numSTD = 2
-%     (approximate 95% confidence).
+%   tau - Common time resolution of t1 and t2.
+%     If omitted the gcd of the mean differences in t1 and mean differences
+%     in t2 will be used, and returned as 3 return value.
 %
 % Output Arguments:
 %
@@ -42,9 +42,9 @@ function varargout = crosscorrirr(t1, y1, t2, y2, N, S)
 %     0, +/-1, +/-2, ..., +/-numLags. The center element of xcf contains
 %     the zeroth-lag cross correlation. xcf will be a column vector.
 %
-%   lags - Vector of lags corresponding to xcf (-numLags to +numLags).
+%   lags - Vector of lags.
 %
-%   tau - Resolution of the lags, the i-th lag is at time lag(i) * tau.
+%   tau - Resolution of the lags.
 %
 %   bounds - Two-element vector indicating the approximate upper and lower
 %     confidence bounds, assuming the input series are uncorrelated.

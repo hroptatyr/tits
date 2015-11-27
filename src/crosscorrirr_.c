@@ -319,7 +319,9 @@ cots_xcor(
 	(void)_norm_d(y1, n1, _stats_d);
 	(void)_norm_d(y2, n2, _stats_d);
 
-	*tau = _mean_tdiff(t1, n1, t2, n2);
+	if (*tau <= 0.) {
+		*tau = _mean_tdiff(t1, n1, t2, n2);
+	}
 	with (register double rtau = 1. / *tau) {
 		_dscal(t1, n1, rtau);
 		_dscal(t2, n2, rtau);
@@ -340,7 +342,7 @@ cots_xcor(
 void
 mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 {
-	double tau;
+	double tau = -0.;
 	int nlags = 20;
 	double *tgt;
 	size_t n1, n2;
@@ -358,6 +360,15 @@ mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 			return;
 		} else if ((nlags = (int)mxGetScalar(prhs[4U])) < 0) {
 			mexErrMsgTxt("number of lags must be non-negative");
+			return;
+		}
+	}
+	if (nrhs > 5) {
+		if (!mxIsNumeric(prhs[5U])) {
+			mexErrMsgTxt("tau must be a number");
+			return;
+		} else if ((tau = mxGetScalar(prhs[5U])) <= 0.) {
+			mexErrMsgTxt("tau must be positive");
 			return;
 		}
 	}
