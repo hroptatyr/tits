@@ -52,6 +52,31 @@ typedef double ald_t __attribute__((aligned(16)));
 
 #define widthof(x)	(sizeof(x) / sizeof(double))
 
+#if 0
+/* AVX-512 */
+#define __mXd		__m512d
+#define _mmX_broadcast_sd(x)	_mm512_broadcastsd_pd(_mm_load1_pd(x))
+#define _mmX_load_pd	_mm512_load_pd
+#define _mmX_store_pd	_mm512_store_pd
+#define _mmX_add_pd	_mm512_add_pd
+#define _mmX_mul_pd	_mm512_mul_pd
+#elif 1
+#define __mXd		__m256d
+#define _mmX_broadcast_sd(x)	_mm256_broadcast_sd(x)
+#define _mmX_load_pd	_mm256_load_pd
+#define _mmX_store_pd	_mm256_store_pd
+#define _mmX_add_pd	_mm256_add_pd
+#define _mmX_mul_pd	_mm256_mul_pd
+#else
+/* plain old SSE */
+#define __mXd		__m128d
+#define _mmX_broadcast_sd(x)	_mm_load1_pd(x)
+#define _mmX_load_pd	_mm_load_pd
+#define _mmX_store_pd	_mm_store_pd
+#define _mmX_add_pd	_mm_add_pd
+#define _mmX_mul_pd	_mm_mul_pd
+#endif
+
 
 static __attribute__((unused)) int
 _stats_d(double mean[static 1U], double std[static 1U], ald_t s[], size_t ns)
@@ -95,8 +120,8 @@ _norm_d(ald_t s[], size_t ns, int(*statf)(double*, double*, ald_t[], size_t))
 {
 /* calculate (s - mean(s)) / std(s) */
 	double mu, sigma;
-	register __m128d mmu;
-	register __m128d msd;
+	register __mXd mmu;
+	register __mXd msd;
 
 	if (UNLIKELY(statf(&mu, &sigma, s, ns) < 0)) {
 		return -1;
@@ -104,19 +129,31 @@ _norm_d(ald_t s[], size_t ns, int(*statf)(double*, double*, ald_t[], size_t))
 
 	/* go for (s + -mu) * 1/sigma */
 	mu = -mu;
-	mmu = _mm_load1_pd(&mu);
+	mmu = _mmX_broadcast_sd(&mu);
 	sigma = 1. / sigma;
-	msd = _mm_load1_pd(&sigma);
-#define INC	(widthof(__m128d))
+	msd = _mmX_broadcast_sd(&sigma);
+#define INC	(widthof(__mXd))
 	for (size_t i = 0U; i + INC - 1U < ns; i += INC) {
-		register __m128d ms;
-		ms = _mm_load_pd(s + i);
-		ms = _mm_add_pd(ms, mmu);
-		ms = _mm_mul_pd(ms, msd);
-		_mm_store_pd(s + i, ms);
+		register __mXd ms;
+		ms = _mmX_load_pd(s + i);
+		ms = _mmX_add_pd(ms, mmu);
+		ms = _mmX_mul_pd(ms, msd);
+		_mmX_store_pd(s + i, ms);
 	}
 	/* do the rest by hand */
 	switch (ns % INC) {
+	case 7U:
+		s[ns - 7U] += mu;
+		s[ns - 7U] *= sigma;
+	case 6U:
+		s[ns - 6U] += mu;
+		s[ns - 6U] *= sigma;
+	case 5U:
+		s[ns - 5U] += mu;
+		s[ns - 5U] *= sigma;
+	case 4U:
+		s[ns - 4U] += mu;
+		s[ns - 4U] *= sigma;
 	case 3U:
 		s[ns - 3U] += mu;
 		s[ns - 3U] *= sigma;
@@ -138,17 +175,25 @@ static int
 _dscal(ald_t s[], size_t ns, double f)
 {
 /* calculate f * s */
-	register __m128d mf = _mm_load1_pd(&f);
+	register __mXd mf = _mmX_broadcast_sd(&f);
 
-#define INC	(widthof(__m128d))
+#define INC	(widthof(__mXd))
 	for (size_t i = 0U; i + INC < ns; i += INC) {
-		register __m128d ms;
-		ms = _mm_load_pd(s + i);
-		ms = _mm_mul_pd(ms, mf);
-		_mm_store_pd(s + i, ms);
+		register __mXd ms;
+		ms = _mmX_load_pd(s + i);
+		ms = _mmX_mul_pd(ms, mf);
+		_mmX_store_pd(s + i, ms);
 	}
 	/* do the rest by hand */
 	switch (ns % INC) {
+	case 7U:
+		s[ns - 7U] *= f;
+	case 6U:
+		s[ns - 6U] *= f;
+	case 5U:
+		s[ns - 5U] *= f;
+	case 4U:
+		s[ns - 4U] *= f;
 	case 3U:
 		s[ns - 3U] *= f;
 	case 2U:
