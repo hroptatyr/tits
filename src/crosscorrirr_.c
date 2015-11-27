@@ -132,42 +132,13 @@ _norm_d(ald_t s[], size_t ns, int(*statf)(double*, double*, ald_t[], size_t))
 	mmu = _mmX_broadcast_sd(&mu);
 	sigma = 1. / sigma;
 	msd = _mmX_broadcast_sd(&sigma);
-#define INC	(widthof(__mXd))
-	for (size_t i = 0U; i + INC - 1U < ns; i += INC) {
+	for (size_t i = 0U; i + widthof(__mXd) - 1U < ns; i += widthof(__mXd)) {
 		register __mXd ms;
 		ms = _mmX_load_pd(s + i);
 		ms = _mmX_add_pd(ms, mmu);
 		ms = _mmX_mul_pd(ms, msd);
 		_mmX_store_pd(s + i, ms);
 	}
-	/* do the rest by hand */
-	switch (ns % INC) {
-	case 7U:
-		s[ns - 7U] += mu;
-		s[ns - 7U] *= sigma;
-	case 6U:
-		s[ns - 6U] += mu;
-		s[ns - 6U] *= sigma;
-	case 5U:
-		s[ns - 5U] += mu;
-		s[ns - 5U] *= sigma;
-	case 4U:
-		s[ns - 4U] += mu;
-		s[ns - 4U] *= sigma;
-	case 3U:
-		s[ns - 3U] += mu;
-		s[ns - 3U] *= sigma;
-	case 2U:
-		s[ns - 2U] += mu;
-		s[ns - 2U] *= sigma;
-	case 1U:
-		s[ns - 1U] += mu;
-		s[ns - 1U] *= sigma;
-	case 0U:
-	default:
-		break;
-	}
-#undef INC
 	return 0;
 }
 
@@ -177,34 +148,12 @@ _dscal(ald_t s[], size_t ns, double f)
 /* calculate f * s */
 	register __mXd mf = _mmX_broadcast_sd(&f);
 
-#define INC	(widthof(__mXd))
-	for (size_t i = 0U; i + INC - 1U < ns; i += INC) {
+	for (size_t i = 0U; i + widthof(__mXd) - 1U < ns; i += widthof(__mXd)) {
 		register __mXd ms;
 		ms = _mmX_load_pd(s + i);
 		ms = _mmX_mul_pd(ms, mf);
 		_mmX_store_pd(s + i, ms);
 	}
-	/* do the rest by hand */
-	switch (ns % INC) {
-	case 7U:
-		s[ns - 7U] *= f;
-	case 6U:
-		s[ns - 6U] *= f;
-	case 5U:
-		s[ns - 5U] *= f;
-	case 4U:
-		s[ns - 4U] *= f;
-	case 3U:
-		s[ns - 3U] *= f;
-	case 2U:
-		s[ns - 2U] *= f;
-	case 1U:
-		s[ns - 1U] *= f;
-	case 0U:
-	default:
-		break;
-	}
-#undef INC
 	return 0;
 }
 
@@ -336,6 +285,10 @@ samples (y2) and sample times (t2) must have same dimension");
 		plhs[1U] = mxCreateDoubleMatrix(1, 2 * nlags + 1, mxREAL);
 		lags = mxGetPr(plhs[1U]);
 	}
+
+	/* shrink to numbers of elements divisible by the width */
+	n1 -= n1 % widthof(__mXd);
+	n2 -= n2 % widthof(__mXd);
 
 	/* snarf input */
 	t1 = _mm_malloc(n1 * sizeof(*t1), sizeof(__mXd));
