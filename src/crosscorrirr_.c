@@ -48,7 +48,6 @@
 #include <immintrin.h>
 #include "nifty.h"
 
-typedef double ald_t __attribute__((aligned(16)));
 
 #define widthof(x)	(sizeof(x) / sizeof(double))
 
@@ -76,6 +75,20 @@ typedef double ald_t __attribute__((aligned(16)));
 #define _mmX_add_pd	_mm_add_pd
 #define _mmX_mul_pd	_mm_mul_pd
 #endif
+
+typedef double ald_t __attribute__((aligned(sizeof(__mXd))));
+
+typedef struct {
+	size_t n;
+	const double *t;
+	const double *y;
+} una_ts_t;
+
+typedef struct {
+	size_t n;
+	const ald_t *t;
+	const ald_t *y;
+} ats_t;
 
 
 static __attribute__((unused)) int
@@ -193,7 +206,7 @@ _krnl_bjoernstad_falck(double ktij)
 }
 
 static double
-xcf(int lag, const ald_t t1[], const ald_t y1[], size_t n1, const ald_t t2[], const ald_t y2[], size_t n2)
+xcf(int lag, ats_t ts1, ats_t ts2)
 {
 	double nsum = 0.f;
 	double dsum = 0.f;
@@ -201,21 +214,70 @@ xcf(int lag, const ald_t t1[], const ald_t y1[], size_t n1, const ald_t t2[], co
 	size_t strt = 0U;
 	size_t strk = 0U;
 
-	for (size_t i = 0U; i < n1; i++) {
-		const double kti = (double)lag + t1[i];
+	for (size_t i = 0U; i < ts1.n; i++) {
+		const double kti = (double)lag + ts1.t[i];
 
 		/* find start of the interesting window */
-		for (; strt < n2 && t2[strt] < kti - 1.1; strt++);
+		for (; strt < ts2.n && ts2.t[strt] < kti - 1.1; strt++);
 		for (strk = strk < strt ? strt : strk;
-		     strk < n2 && t2[strk] < kti + 1.1; strk++);
+		     strk < ts2.n && ts2.t[strk] < kti + 1.1; strk++);
 
 		for (size_t j = strt; j < strk; j++) {
-			double K = _krnl_bjoernstad_falck(lag - (t2[j] - t1[i]));
+			double K = _krnl_bjoernstad_falck(
+				lag - (ts2.t[j] - ts1.t[i]));
 			dsum += K;
-			nsum += y1[i] * y2[j] * K;
+			nsum += ts1.y[i] * ts2.y[j] * K;
 		}
 	}
 	return nsum / dsum;
+}
+
+static int
+cots_xcor(
+	double *restrict tgt, double tau[static 1U],
+	una_ts_t ts1, una_ts_t ts2, int nlags)
+{
+	size_t n1, n2;
+	ald_t *t1, *t2;
+	ald_t *y1, *y2;
+
+	/* shrink to numbers of elements divisible by the width */
+	if (UNLIKELY(!(n1 = ts1.n - ts1.n % widthof(__mXd)))) {
+		/* can't have no elements can we? */
+		return -1;
+	} else if (UNLIKELY(!(n2 = ts2.n - ts2.n % widthof(__mXd)))) {
+		/* can't have no elements can we? */
+		return -1;
+	}
+
+	/* snarf input */
+	t1 = _mm_malloc(n1 * sizeof(*t1), sizeof(__mXd));
+	y1 = _mm_malloc(n1 * sizeof(*y1), sizeof(__mXd));
+	t2 = _mm_malloc(n2 * sizeof(*t2), sizeof(__mXd));
+	y2 = _mm_malloc(n2 * sizeof(*y2), sizeof(__mXd));
+	memcpy(t1, ts1.t, n1 * sizeof(*t1));
+	memcpy(y1, ts1.y, n1 * sizeof(*y1));
+	memcpy(t2, ts2.t, n2 * sizeof(*t2));
+	memcpy(y2, ts2.y, n2 * sizeof(*y2));
+
+	(void)_norm_d(y1, n1, _stats_d);
+	(void)_norm_d(y2, n2, _stats_d);
+
+	*tau = _mean_tdiff(t1, n1, t2, n2);
+	with (register double rtau = 1. / *tau) {
+		_dscal(t1, n1, rtau);
+		_dscal(t2, n2, rtau);
+	}
+
+	for (int k = -nlags, i = 0; k <= nlags; k++, i++) {
+		tgt[i] = xcf(k, (ats_t){n1, t1, y1}, (ats_t){n2, t2, y2});
+	}
+
+	_mm_free(t1);
+	_mm_free(t2);
+	_mm_free(y1);
+	_mm_free(y2);
+	return 0;
 }
 
 
@@ -224,11 +286,8 @@ mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 {
 	double tau;
 	int nlags = 20;
-	size_t n1, n2;
-	ald_t *t1, *t2;
-	ald_t *y1, *y2;
 	double *tgt;
-	double *lags = NULL;
+	size_t n1, n2;
 
 	if (nrhs < 4 || !nlhs ||
 	    !mxIsDouble(prhs[0U]) || !mxIsDouble(prhs[1U]) ||
@@ -282,47 +341,28 @@ samples (y2) and sample times (t2) must have same dimension");
 	*plhs = mxCreateDoubleMatrix(1, 2 * nlags + 1, mxREAL);
 	tgt = mxGetPr(*plhs);
 	if (nlhs > 1) {
+		double *lags;
+
 		plhs[1U] = mxCreateDoubleMatrix(1, 2 * nlags + 1, mxREAL);
 		lags = mxGetPr(plhs[1U]);
-	}
-
-	/* shrink to numbers of elements divisible by the width */
-	n1 -= n1 % widthof(__mXd);
-	n2 -= n2 % widthof(__mXd);
-
-	/* snarf input */
-	t1 = _mm_malloc(n1 * sizeof(*t1), sizeof(__mXd));
-	y1 = _mm_malloc(n1 * sizeof(*y1), sizeof(__mXd));
-	t2 = _mm_malloc(n2 * sizeof(*t2), sizeof(__mXd));
-	y2 = _mm_malloc(n2 * sizeof(*y2), sizeof(__mXd));
-	memcpy(t1, mxGetPr(prhs[0U]), n1 * sizeof(*t1));
-	memcpy(y1, mxGetPr(prhs[1U]), n1 * sizeof(*y1));
-	memcpy(t2, mxGetPr(prhs[2U]), n2 * sizeof(*t2));
-	memcpy(y2, mxGetPr(prhs[3U]), n2 * sizeof(*y2));
-
-	(void)_norm_d(y1, n1, _stats_d);
-	(void)_norm_d(y2, n2, _stats_d);
-
-	tau = _mean_tdiff(t1, n1, t2, n2);
-	with (register double rtau = 1. / tau) {
-		_dscal(t1, n1, rtau);
-		_dscal(t2, n2, rtau);
-	}
-	if (nlhs > 2) {
-		plhs[2U] = mxCreateDoubleScalar(tau);
-	}
-
-	for (int k = -nlags, i = 0; k <= nlags; k++, i++) {
-		tgt[i] = xcf(k, t1, y1, n1, t2, y2, n2);
-		if (lags != NULL) {
+		for (int k = -nlags, i = 0; k <= nlags; k++, i++) {
 			lags[i] = (double)k;
 		}
 	}
 
-	_mm_free(t1);
-	_mm_free(t2);
-	_mm_free(y1);
-	_mm_free(y2);
+	/* beef */
+	with (double *t1 = mxGetPr(prhs[0U]), *y1 = mxGetPr(prhs[1U]),
+	      *t2 = mxGetPr(prhs[2U]), *y2 = mxGetPr(prhs[3U])) {
+		cots_xcor(
+			tgt, &tau,
+			(una_ts_t){n1, t1, y1}, (una_ts_t){n2, t2, y2},
+			nlags);
+	}
+
+	if (nlhs > 2) {
+		plhs[2U] = mxCreateDoubleScalar(tau);
+	}
+
 	return;
 }
 
