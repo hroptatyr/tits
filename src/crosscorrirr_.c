@@ -407,15 +407,6 @@ samples (y2) and sample times (t2) must have same dimension");
 	/* initialise output */
 	*plhs = mxCreateDoubleMatrix(1, 2 * nlags + 1, mxREAL);
 	tgt = mxGetPr(*plhs);
-	if (nlhs > 1) {
-		double *lags;
-
-		plhs[1U] = mxCreateDoubleMatrix(1, 2 * nlags + 1, mxREAL);
-		lags = mxGetPr(plhs[1U]);
-		for (int k = -nlags, i = 0; k <= nlags; k++, i++) {
-			lags[i] = (double)k * tau;
-		}
-	}
 
 	/* beef */
 	with (double *t1 = mxGetPr(prhs[0U]), *y1 = mxGetPr(prhs[1U]),
@@ -426,6 +417,15 @@ samples (y2) and sample times (t2) must have same dimension");
 			nlags);
 	}
 
+	if (nlhs > 1) {
+		double *lags;
+
+		plhs[1U] = mxCreateDoubleMatrix(1, 2 * nlags + 1, mxREAL);
+		lags = mxGetPr(plhs[1U]);
+		for (int k = -nlags, i = 0; k <= nlags; k++, i++) {
+			lags[i] = (double)k * tau;
+		}
+	}
 	if (nlhs > 2) {
 		plhs[2U] = mxCreateDoubleScalar(tau);
 	}
