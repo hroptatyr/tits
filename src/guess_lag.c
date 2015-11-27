@@ -12,29 +12,56 @@
 
 #define NSECS	(1000000000)
 
-typedef float alf_t __attribute__((aligned(16)));
-typedef double ald_t __attribute__((aligned(16)));
+#define widthof(x, y)	(sizeof(x) / sizeof(y))
+#define widthof(x, y)	(sizeof(x) / sizeof(y))
+
+#if 0
+/* AVX-512 */
+#define __mX		__m512
+#define __mXd		__m512d
+#define _mmX_broadcast_ss(x)	_mm512_broadcastss_ps(_mm_load1_ps(x))
+#define _mmX_broadcast_sd(x)	_mm512_broadcastsd_pd(_mm_load1_pd(x))
+#define _mmX_load_ps	_mm512_load_ps
+#define _mmX_load_pd	_mm512_load_pd
+#define _mmX_store_ps	_mm512_store_ps
+#define _mmX_store_pd	_mm512_store_pd
+#define _mmX_add_ps	_mm512_add_ps
+#define _mmX_add_pd	_mm512_add_pd
+#define _mmX_mul_ps	_mm512_mul_ps
+#define _mmX_mul_pd	_mm512_mul_pd
+#elif 1
+#define __mX		__m256
+#define __mXd		__m256d
+#define _mmX_broadcast_ss(x)	_mm256_broadcast_ss(x)
+#define _mmX_broadcast_sd(x)	_mm256_broadcast_sd(x)
+#define _mmX_load_ps	_mm256_load_ps
+#define _mmX_load_pd	_mm256_load_pd
+#define _mmX_store_ps	_mm256_store_ps
+#define _mmX_store_pd	_mm256_store_pd
+#define _mmX_add_ps	_mm256_add_ps
+#define _mmX_add_pd	_mm256_add_pd
+#define _mmX_mul_ps	_mm256_mul_ps
+#define _mmX_mul_pd	_mm256_mul_pd
+#else
+/* plain old SSE */
+#define __mX		__m128
+#define __mXd		__m128d
+#define _mmX_broadcast_ss(x)	_mm_load1_ps(x)
+#define _mmX_broadcast_sd(x)	_mm_load1_pd(x)
+#define _mmX_load_ps	_mm_load_ps
+#define _mmX_load_pd	_mm_load_pd
+#define _mmX_store_ps	_mm_store_ps
+#define _mmX_store_pd	_mm_store_pd
+#define _mmX_add_ps	_mm_add_ps
+#define _mmX_add_pd	_mm_add_pd
+#define _mmX_mul_ps	_mm_mul_ps
+#define _mmX_mul_pd	_mm_mul_pd
+#endif
+
+typedef float alf_t __attribute__((aligned(sizeof(__mX))));
+typedef double ald_t __attribute__((aligned(sizeof(__mXd))));
 
 
-static __attribute__((unused)) int
-_stats_f(float mean[static 1U], float std[static 1U], alf_t s[], size_t ns)
-{
-#define VSL_SS_TASK	(VSL_SS_MEAN | VSL_SS_2R_MOM)
-	VSLSSTaskPtr task;
-	MKL_INT ndim = 1;
-	MKL_INT dim1 = ns;
-	MKL_INT stor = VSL_SS_MATRIX_STORAGE_ROWS;
-	int rc = 0;
-
-	rc += vslsSSNewTask(&task, &ndim, &dim1, &stor, s, 0, 0);
-	rc += vslsSSEditTask(task, VSL_SS_ED_MEAN, mean);
-	rc += vslsSSEditTask(task, VSL_SS_ED_2R_MOM, std);
-	rc += vslsSSCompute(task, VSL_SS_TASK, VSL_SS_METHOD_FAST);
-	rc += vslSSDeleteTask(&task);
-	return rc;
-#undef VSL_SS_TASK
-}
-
 static __attribute__((unused)) int
 _quasi_stats_f(float mean[static 1U], float std[static 1U], alf_t s[], size_t ns)
 {
@@ -56,82 +83,126 @@ _quasi_stats_f(float mean[static 1U], float std[static 1U], alf_t s[], size_t ns
 static int
 _norm_f(alf_t s[], size_t ns, int(*statf)(float*, float*, alf_t[], size_t))
 {
+/* calculate (s - mean(s)) / std(s) */
 	float mu, sigma;
-	register __m128 mmu;
-	register __m128 msd;
+	register __mX mmu;
+	register __mX msd;
 
 	if (UNLIKELY(statf(&mu, &sigma, s, ns) < 0)) {
 		return -1;
 	}
+
 	/* go for (s + -mu) * 1/sigma */
 	mu = -mu;
-	mmu = _mm_load1_ps(&mu);
+	mmu = _mmX_broadcast_ss(&mu);
 	sigma = 1.f / sigma;
-	msd = _mm_load1_ps(&sigma);
-	for (size_t i = 0U; i + 3U < ns; i += 4U) {
-		register __m128 ms;
-		ms = _mm_load_ps(s + i);
-		ms = _mm_add_ps(ms, mmu);
-		ms = _mm_mul_ps(ms, msd);
-		_mm_store_ps(s + i, ms);
+	msd = _mmX_broadcast_ss(&sigma);
+#define WIDTH	(widthof(mmu, mu))
+	for (size_t i = 0U; i + WIDTH - 1U < ns; i += WIDTH) {
+		register __mX ms;
+		ms = _mmX_load_ps(s + i);
+		ms = _mmX_add_ps(ms, mmu);
+		ms = _mmX_mul_ps(ms, msd);
+		_mmX_store_ps(s + i, ms);
 	}
-	/* do the rest by hand */
-	switch (ns % 4U) {
-	case 3U:
-		s[ns - 3U] += mu;
-		s[ns - 3U] *= sigma;
-	case 2U:
-		s[ns - 2U] += mu;
-		s[ns - 2U] *= sigma;
-	case 1U:
-		s[ns - 1U] += mu;
-		s[ns - 1U] *= sigma;
-	case 0U:
-	default:
-		break;
+#undef WIDTH
+	return 0;
+}
+
+static int
+_dscal(ald_t s[], size_t ns, double f)
+{
+/* calculate f * s */
+	register __mXd mf = _mmX_broadcast_sd(&f);
+
+#define WIDTH	(widthof(mf, f))
+	for (size_t i = 0U; i + WIDTH - 1U < ns; i += WIDTH) {
+		register __mXd ms;
+		ms = _mmX_load_pd(s + i);
+		ms = _mmX_mul_pd(ms, mf);
+		_mmX_store_pd(s + i, ms);
 	}
+#undef WIDTH
 	return 0;
 }
 
 
+static long int
+_gcd_l(long int x, long int y)
+{
+/* euklid's gcd */
+	while (y) {
+		long int tmp = y;
+		y = x % y;
+		x = tmp;
+	}
+	return x;
+}
+
 static double
-_mean_tdiff(ald_t t1[], size_t n1, ald_t t2[], size_t n2)
+_gcd_d(double x, double y)
+{
+/* euklid's gcd for quotients */
+	/* separate X into XI + 1/XD and Y into YI + 1/YD
+	 * then use long int gcd */
+	double xi = trunc(x);
+	double yi = trunc(y);
+	long int xd = 1;
+	long int yd = 1;
+	long int xn;
+	long int yn;
+	long int dd;
+	long int dn;
+
+	x -= xi;
+	y -= yi;
+
+	xn = (long int)xi;
+	yn = (long int)yi;
+
+	/* as a proxy for XD we use trunc(XD) */
+	if (x > __DBL_EPSILON__) {
+		xd = (long int)(1. / x);
+		xn *= xd;
+		xn++;
+	}
+	if (y > __DBL_EPSILON__) {
+		yd = (long int)(1. / y);
+		yn *= yd;
+		yn++;
+	}
+	/* yay, we can finally calc the lcm denominator */
+	dd = (xd * yd) / _gcd_l(xd, yd);
+	/* now fiddle with the numerators */
+	xn *= dd / xd;
+	yn *= dd / yd;
+
+	/* finally gcd the numerators and we're done */
+	dn = _gcd_l(xn, yn);
+	return (double)dn / (double)dd;
+}
+
+static double
+_mean_tdiff(const ald_t t1[], size_t n1, const ald_t t2[], size_t n2)
 {
 /* calculate average time differences
- * min(t1[i], t2[j]) - min(t1[i - 1], t2[j - 1]) */
-	double sum = 0.0;
-	double prev;
-	size_t i, j;
+ * gcd(mean(t1[i] - t1[i-1]), mean(t2[j], t2[j - 1])) */
+	double tau1, tau2;
+	double sum;
 
-	if (*t1 <= *t2) {
-		i = 1U;
-		j = 0U;
-		prev = *t1;
-	} else {
-		i = 0U;
-		j = 1U;
-		prev = *t2;
+	sum = 0.;
+	for (size_t i = 1U; i < n1; i++) {
+		sum += t1[i] - t1[i - 1];
 	}
-	while (i < n1 && j < n2) {
-		if (t1[i] <= t2[j]) {
-			sum += t1[i] - prev;
-			prev = t1[i++];
-		} else {
-			sum += t2[j] - prev;
-			prev = t2[j++];
-		}
+	tau1 = sum / (double)(n1 - 1U);
+
+	sum = 0.;
+	for (size_t j = 1U; j < n2; j++) {
+		sum += t2[j] - t2[j - 1];
 	}
-	/* remainder of t1 */
-	while (i < n1) {
-		sum += t1[i] - prev;
-		prev = t1[i++];
-	}
-	/* remainder of t2 */
-	while (j < n2) {
-		sum += t2[j] - prev;
-		prev = t2[j++];
-	}
-	return sum / (double)(n1 + n2 - 1U);
+	tau2 = sum / (double)(n2 - 1U);
+
+	return _gcd_d(tau1, tau2);
 }
 
 static double
@@ -180,20 +251,13 @@ crosscorrirr(ald_t t1[], alf_t y1[], size_t n1, ald_t t2[], alf_t y2[], size_t n
 	int best_lag[4U] = {nlags + 1, nlags + 1, nlags + 1, nlags + 1};
 	int least_best;
 
-	for (size_t i = 0U; i < n1; i++) {
-		printf("%zu\t%g\t%g\n", i, t1[i], y1[i]);
-	}
-	for (size_t i = 0U; i < n2; i++) {
-		printf("%zu\t%g\t%g\n", i, t2[i], y2[i]);
-	}
-
-	(void)_norm_f(y1, n1, _stats_f);
-	(void)_norm_f(y2, n2, _stats_f);
+	(void)_norm_f(y1, n1, _quasi_stats_f);
+	(void)_norm_f(y2, n2, _quasi_stats_f);
 
 	tau = _mean_tdiff(t1, n1, t2, n2);
 	with (register double rtau = 1. / tau) {
-		cblas_dscal(n1, rtau, t1, 1U);
-		cblas_dscal(n2, rtau, t2, 1U);
+		_dscal(t1, n1, rtau);
+		_dscal(t2, n2, rtau);
 	}
 
 	with (double bestx[4U] = {-INFINITY, -INFINITY, -INFINITY, -INFINITY}) {
