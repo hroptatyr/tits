@@ -63,6 +63,26 @@ typedef double ald_t __attribute__((aligned(sizeof(__mXd))));
 
 
 static __attribute__((unused)) int
+_stats_f(float mean[static 1U], float std[static 1U], alf_t s[], size_t ns)
+{
+	float sum;
+
+	sum = 0.;
+	for (size_t i = 0U; i < ns; i++) {
+		sum += s[i];
+	}
+	*mean = sum / (float)ns;
+
+	sum = 0.;
+	for (size_t i = 0U; i < ns; i++) {
+		float tmp = (s[i] - *mean);
+		sum += tmp * tmp ;
+	}
+	*std = sqrtf(sum / (float)ns);
+	return 0;
+}
+
+static __attribute__((unused)) int
 _quasi_stats_f(float mean[static 1U], float std[static 1U], alf_t s[], size_t ns)
 {
 	float min = s[0U], max = s[0U];
@@ -127,88 +147,10 @@ _dscal(ald_t s[], size_t ns, double f)
 }
 
 
-static long int
-_gcd_l(long int x, long int y)
-{
-/* euklid's gcd */
-	while (y) {
-		long int tmp = y;
-		y = x % y;
-		x = tmp;
-	}
-	return x;
-}
-
-static double
-_gcd_d(double x, double y)
-{
-/* euklid's gcd for quotients */
-	/* separate X into XI + 1/XD and Y into YI + 1/YD
-	 * then use long int gcd */
-	double xi = trunc(x);
-	double yi = trunc(y);
-	long int xd = 1;
-	long int yd = 1;
-	long int xn;
-	long int yn;
-	long int dd;
-	long int dn;
-
-	x -= xi;
-	y -= yi;
-
-	xn = (long int)xi;
-	yn = (long int)yi;
-
-	/* as a proxy for XD we use trunc(XD) */
-	if (x > __DBL_EPSILON__) {
-		xd = (long int)(1. / x);
-		xn *= xd;
-		xn++;
-	}
-	if (y > __DBL_EPSILON__) {
-		yd = (long int)(1. / y);
-		yn *= yd;
-		yn++;
-	}
-	/* yay, we can finally calc the lcm denominator */
-	dd = (xd * yd) / _gcd_l(xd, yd);
-	/* now fiddle with the numerators */
-	xn *= dd / xd;
-	yn *= dd / yd;
-
-	/* finally gcd the numerators and we're done */
-	dn = _gcd_l(xn, yn);
-	return (double)dn / (double)dd;
-}
-
-static double
-_mean_tdiff(const ald_t t1[], size_t n1, const ald_t t2[], size_t n2)
-{
-/* calculate average time differences
- * gcd(mean(t1[i] - t1[i-1]), mean(t2[j], t2[j - 1])) */
-	double tau1, tau2;
-	double sum;
-
-	sum = 0.;
-	for (size_t i = 1U; i < n1; i++) {
-		sum += t1[i] - t1[i - 1];
-	}
-	tau1 = sum / (double)(n1 - 1U);
-
-	sum = 0.;
-	for (size_t j = 1U; j < n2; j++) {
-		sum += t2[j] - t2[j - 1];
-	}
-	tau2 = sum / (double)(n2 - 1U);
-
-	return _gcd_d(tau1, tau2);
-}
-
 static double
 _krnl_bjoernstad_falck(double ktij)
 {
-#define KRNL_WIDTH	(0.25)
+#define KRNL_WIDTH     (0.25)
 	/* -1/(2 h^2)  h being the kernel width */
 	static const double _xf = -8.;
 	/* 1/sqrt(2PI h) h being the kernel width */
@@ -245,74 +187,29 @@ xcf(int lag, ald_t t1[], alf_t y1[], size_t n1, ald_t t2[], alf_t y2[], size_t n
 
 
 static double
-crosscorrirr(ald_t t1[], alf_t y1[], size_t n1, ald_t t2[], alf_t y2[], size_t n2, int nlags)
+crosscorrirr(ald_t t1[], alf_t y1[], size_t n1, ald_t t2[], alf_t y2[], size_t n2, int nlags, double tau)
 {
-	double tau;
-	int best_lag[4U] = {nlags + 1, nlags + 1, nlags + 1, nlags + 1};
-	int least_best;
+	int best_lag;
 
-	(void)_norm_f(y1, n1, _quasi_stats_f);
-	(void)_norm_f(y2, n2, _quasi_stats_f);
+	(void)_norm_f(y1, n1, _stats_f);
+	(void)_norm_f(y2, n2, _stats_f);
 
-	tau = _mean_tdiff(t1, n1, t2, n2);
 	with (register double rtau = 1. / tau) {
 		_dscal(t1, n1, rtau);
 		_dscal(t2, n2, rtau);
 	}
 
-	with (double bestx[4U] = {-INFINITY, -INFINITY, -INFINITY, -INFINITY}) {
+	with (double bestx = -INFINITY) {
 		for (int k = -nlags; k <= nlags; k++) {
 			double x = xcf(k, t1, y1, n1, t2, y2, n2);
 
-			if (x < 1e-5) {
-				continue;
-			} else if (UNLIKELY(x > bestx[3U])) {
-				bestx[0U] = bestx[1U];
-				best_lag[0U] = best_lag[1U];
-
-				bestx[1U] = bestx[2U];
-				best_lag[1U] = best_lag[2U];
-
-				bestx[2U] = bestx[3U];
-				best_lag[2U] = best_lag[3U];
-
-				bestx[3U] = x;
-				best_lag[3U] = k;
-			} else if (UNLIKELY(x > bestx[2U])) {
-				bestx[0U] = bestx[1U];
-				best_lag[0U] = best_lag[1U];
-
-				bestx[1U] = bestx[2U];
-				best_lag[1U] = best_lag[2U];
-
-				bestx[2U] = x;
-				best_lag[2U] = k;
-			} else if (UNLIKELY(x > bestx[1U])) {
-				bestx[0U] = bestx[1U];
-				best_lag[0U] = best_lag[1U];
-
-				bestx[1U] = x;
-				best_lag[1U] = k;
-			} else if (UNLIKELY(x > bestx[0U])) {
-				bestx[0U] = x;
-				best_lag[0U] = k;
+			if (UNLIKELY(x > bestx)) {
+				bestx = x;
+				best_lag = k;
 			}
 		}
 	}
-	least_best = nlags + 1;
-	if (best_lag[0U] < least_best) {
-		least_best = best_lag[0U];
-	}
-	if (best_lag[1U] < least_best) {
-		least_best = best_lag[1U];
-	}
-	if (best_lag[2U] < least_best) {
-		least_best = best_lag[2U];
-	}
-	if (best_lag[3U] < least_best) {
-		least_best = best_lag[3U];
-	}
-	return least_best < nlags + 1 ? (double)least_best * tau : NAN;
+	return (double)best_lag * tau;
 }
 
 
@@ -348,7 +245,7 @@ static tv_t metr;
 static book_t
 make_book(void)
 {
-#define MAX_TICKS	(256U)
+#define MAX_TICKS	(4096U)
 	book_t res = {
 		.n = 0U,
 		.t = calloc(MAX_TICKS, sizeof(*res.t)),
@@ -516,7 +413,6 @@ skim(void)
 	static alf_t p2[MAX_TICKS];
 
 	for (size_t i = 0U; i < nsrc; i++) {
-		bool iinitp = false;
 		size_t n1;
 		tv_t tref;
 
@@ -533,17 +429,13 @@ skim(void)
 				continue;
 			} else if ((n2 = book[j].bid.n) < LOW_TICKS) {
 				continue;
-			} else if (!iinitp) {
-				tref = book[i].bid.t[0U];
-				printf("PREP %s\n", src[i]);
-				prep_book(t1, p1, book[i].bid, tref);
-				iinitp = true;
 			}
 			/* yep, do a i,j lead/lag run */
-				printf("PREP %s\n", src[j]);
+			tref = book[i].bid.t[0U];
+			prep_book(t1, p1, book[i].bid, tref);
 			prep_book(t2, p2, book[j].bid, tref);
 
-			lag = crosscorrirr(t1, p1, n1, t2, p2, n2, 20);
+			lag = crosscorrirr(t1, p1, n1, t2, p2, n2, 512, 0.001);
 			printf("%lu.%09lu\tBID\t%s\t%s\t%g\n",
 			       metr / NSECS, metr % NSECS,
 			       src[i], src[j], lag);
@@ -551,7 +443,6 @@ skim(void)
 	}
 
 	for (size_t i = 0U; i < nsrc; i++) {
-		bool iinitp = false;
 		size_t n1;
 		tv_t tref;
 
@@ -568,15 +459,13 @@ skim(void)
 				continue;
 			} else if ((n2 = book[j].ask.n) < LOW_TICKS) {
 				continue;
-			} else if (!iinitp) {
-				tref = book[i].ask.t[0U];
-				prep_book(t1, p1, book[i].ask, tref);
-				iinitp = true;
 			}
 			/* yep, do a i,j lead/lag run */
+			tref = book[i].ask.t[0U];
+			prep_book(t1, p1, book[i].ask, tref);
 			prep_book(t2, p2, book[j].ask, tref);
 
-			lag = crosscorrirr(t1, p1, n1, t2, p2, n2, 20);
+			lag = crosscorrirr(t1, p1, n1, t2, p2, n2, 2000, 0.001);
 			printf("%lu.%09lu\tASK\t%s\t%s\t%g\n",
 			       metr / NSECS, metr % NSECS,
 			       src[i], src[j], lag);
