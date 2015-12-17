@@ -196,10 +196,27 @@ prep_book(double *restrict t, double *restrict p, book_t b, tv_t tref)
 	return;
 }
 
+static double
+get_tau(const double *t1, size_t n1, const double *t2, size_t n2)
+{
+	double t1sum = 0.;
+	double t2sum = 0.;
+
+	for (size_t i = 1U; i < n1; i++) {
+		t1sum += t1[i] - t1[i - 1U];
+	}
+	for (size_t i = 1U; i < n2; i++) {
+		t2sum += t2[i] - t2[i - 1U];
+	}
+	t1sum /= (double)--n1;
+	t2sum /= (double)--n2;
+	return t1sum < t2sum ? t1sum : t2sum;
+}
+
 static void
 skim(void)
 {
-#define NLAGS		(512U)
+#define NLAGS		(2048U)
 #define EDG_TICKS	(3U * MAX_TICKS / 4U)
 #define LOW_TICKS	(2U * MAX_TICKS / 4U)
 	static double t1[MAX_TICKS];
@@ -216,6 +233,7 @@ skim(void)
 		}
 		for (size_t j = 0U; j < nsrc; j++) {
 			double lags[2U * NLAGS + 1U];
+			double tau;
 			size_t n2;
 
 			if (i == j) {
@@ -229,51 +247,22 @@ skim(void)
 			tref = book[i].bid.t[0U];
 			prep_book(t1, p1, book[i].bid, tref);
 			prep_book(t2, p2, book[j].bid, tref);
+			tau = get_tau(t1, book[i].bid.n, t2, book[j].bid.n);
 
 			cots_dxcor(
 				lags,
 				(dts_t){n1, t1, p1}, (dts_t){n2, t2, p2},
-				NLAGS, 0.001);
+				NLAGS, tau);
 
-			printf("%lu.%09lu\tBID\t%s\t%s\n",
-			       metr / NSECS, metr % NSECS, src[i], src[j]);
+			printf("%lu.%09lu\tBID\t%s\t%s\t%g\n",
+			       metr / NSECS, metr % NSECS, src[i], src[j], tau);
 			for (size_t k = 0U; k < countof(lags); k++) {
-				printf("\t%d\t%g\n",
-				       (int)k - (int)NLAGS, lags[k]);
+				int lag = (int)k - (int)NLAGS;
+				double lt = (double)lag * tau;
+				printf("\t%d\t%g\t%g\n", lag, lt, lags[k]);
 			}
 		}
 	}
-#if 0
-	for (size_t i = 0U; i < nsrc; i++) {
-		size_t n1;
-		tv_t tref;
-
-		if ((n1 = book[i].ask.n) != EDG_TICKS) {
-			continue;
-		}
-		for (size_t j = 0U; j < nsrc; j++) {
-			double lag;
-			size_t n2;
-
-			if (i == j) {
-				continue;
-			} else if (j < i && book[j].ask.n == EDG_TICKS) {
-				continue;
-			} else if ((n2 = book[j].ask.n) < LOW_TICKS) {
-				continue;
-			}
-			/* yep, do a i,j lead/lag run */
-			tref = book[i].ask.t[0U];
-			prep_book(t1, p1, book[i].ask, tref);
-			prep_book(t2, p2, book[j].ask, tref);
-
-			lag = crosscorrirr(t1, p1, n1, t2, p2, n2, 2000, 0.001);
-			printf("%lu.%09lu\tASK\t%s\t%s\t%g\n",
-			       metr / NSECS, metr % NSECS,
-			       src[i], src[j], lag);
-		}
-	}
-#endif
 	return;
 }
 
