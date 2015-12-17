@@ -38,7 +38,12 @@ mkl_LIBS = -L/opt/intel/mkl/lib/intel64 -Wl,-rpath,/opt/intel/mkl/lib/intel64 -l
 noinst_LTLIBRARIES += libcotse.la
 libcotse_la_SOURCES = cotse.h
 libcotse_la_SOURCES += hash.c hash.h
+libcotse_la_SOURCES += xcor.c xcor.h
 libcotse_la_SOURCES += version.c version.h
+libcotse_la_CPPFLAGS = $(AM_CPPFLAGS)
+libcotse_la_CPPFLAGS += $(mkl_CFLAGS)
+libcotse_la_LDFLAGS = $(AM_LDFLAGS)
+libcotse_la_LDFLAGS += $(mkl_LIBS)
 EXTRA_libcotse_la_DEPENDENCIES = $(LTDLDEPS)
 
 EXTRA_DIST += crosscorrirr.m

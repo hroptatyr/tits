@@ -3,225 +3,19 @@
 #endif	/* HAVE_CONFIG_H */
 #include <stddef.h>
 #include <stdbool.h>
-#include <math.h>
-#include <mkl.h>
-#include <mkl_vml.h>
-#include <mkl_vsl.h>
-#include <immintrin.h>
-#include "nifty.h"
-
-#define NSECS	(1000000000)
-
-#define widthof(x, y)	(sizeof(x) / sizeof(y))
-#define widthof(x, y)	(sizeof(x) / sizeof(y))
-
-#if 0
-/* AVX-512 */
-#define __mX		__m512
-#define __mXd		__m512d
-#define _mmX_broadcast_ss(x)	_mm512_broadcastss_ps(_mm_load1_ps(x))
-#define _mmX_broadcast_sd(x)	_mm512_broadcastsd_pd(_mm_load1_pd(x))
-#define _mmX_load_ps	_mm512_load_ps
-#define _mmX_load_pd	_mm512_load_pd
-#define _mmX_store_ps	_mm512_store_ps
-#define _mmX_store_pd	_mm512_store_pd
-#define _mmX_add_ps	_mm512_add_ps
-#define _mmX_add_pd	_mm512_add_pd
-#define _mmX_mul_ps	_mm512_mul_ps
-#define _mmX_mul_pd	_mm512_mul_pd
-#elif 1
-#define __mX		__m256
-#define __mXd		__m256d
-#define _mmX_broadcast_ss(x)	_mm256_broadcast_ss(x)
-#define _mmX_broadcast_sd(x)	_mm256_broadcast_sd(x)
-#define _mmX_load_ps	_mm256_load_ps
-#define _mmX_load_pd	_mm256_load_pd
-#define _mmX_store_ps	_mm256_store_ps
-#define _mmX_store_pd	_mm256_store_pd
-#define _mmX_add_ps	_mm256_add_ps
-#define _mmX_add_pd	_mm256_add_pd
-#define _mmX_mul_ps	_mm256_mul_ps
-#define _mmX_mul_pd	_mm256_mul_pd
-#else
-/* plain old SSE */
-#define __mX		__m128
-#define __mXd		__m128d
-#define _mmX_broadcast_ss(x)	_mm_load1_ps(x)
-#define _mmX_broadcast_sd(x)	_mm_load1_pd(x)
-#define _mmX_load_ps	_mm_load_ps
-#define _mmX_load_pd	_mm_load_pd
-#define _mmX_store_ps	_mm_store_ps
-#define _mmX_store_pd	_mm_store_pd
-#define _mmX_add_ps	_mm_add_ps
-#define _mmX_add_pd	_mm_add_pd
-#define _mmX_mul_ps	_mm_mul_ps
-#define _mmX_mul_pd	_mm_mul_pd
-#endif
-
-typedef float alf_t __attribute__((aligned(sizeof(__mX))));
-typedef double ald_t __attribute__((aligned(sizeof(__mXd))));
-
-
-static __attribute__((unused)) int
-_stats_f(float mean[static 1U], float std[static 1U], alf_t s[], size_t ns)
-{
-	float sum;
-
-	sum = 0.;
-	for (size_t i = 0U; i < ns; i++) {
-		sum += s[i];
-	}
-	*mean = sum / (float)ns;
-
-	sum = 0.;
-	for (size_t i = 0U; i < ns; i++) {
-		float tmp = (s[i] - *mean);
-		sum += tmp * tmp ;
-	}
-	*std = sqrtf(sum / (float)ns);
-	return 0;
-}
-
-static __attribute__((unused)) int
-_quasi_stats_f(float mean[static 1U], float std[static 1U], alf_t s[], size_t ns)
-{
-	float min = s[0U], max = s[0U];
-
-	for (size_t i = 1U; i < ns; i++) {
-		if (s[i] > max) {
-			max = s[i];
-		} else if (s[i] < min) {
-			min = s[i];
-		}
-	}
-
-	*std = (max - min);
-	*mean = ((s[0U] + s[ns - 1U]) / 2.f + (max + min) / 2.f) / 2.f;
-	return 0;
-}
-
-static int
-_norm_f(alf_t s[], size_t ns, int(*statf)(float*, float*, alf_t[], size_t))
-{
-/* calculate (s - mean(s)) / std(s) */
-	float mu, sigma;
-	register __mX mmu;
-	register __mX msd;
-
-	if (UNLIKELY(statf(&mu, &sigma, s, ns) < 0)) {
-		return -1;
-	}
-
-	/* go for (s + -mu) * 1/sigma */
-	mu = -mu;
-	mmu = _mmX_broadcast_ss(&mu);
-	sigma = 1.f / sigma;
-	msd = _mmX_broadcast_ss(&sigma);
-#define WIDTH	(widthof(mmu, mu))
-	for (size_t i = 0U; i + WIDTH - 1U < ns; i += WIDTH) {
-		register __mX ms;
-		ms = _mmX_load_ps(s + i);
-		ms = _mmX_add_ps(ms, mmu);
-		ms = _mmX_mul_ps(ms, msd);
-		_mmX_store_ps(s + i, ms);
-	}
-#undef WIDTH
-	return 0;
-}
-
-static int
-_dscal(ald_t s[], size_t ns, double f)
-{
-/* calculate f * s */
-	register __mXd mf = _mmX_broadcast_sd(&f);
-
-#define WIDTH	(widthof(mf, f))
-	for (size_t i = 0U; i + WIDTH - 1U < ns; i += WIDTH) {
-		register __mXd ms;
-		ms = _mmX_load_pd(s + i);
-		ms = _mmX_mul_pd(ms, mf);
-		_mmX_store_pd(s + i, ms);
-	}
-#undef WIDTH
-	return 0;
-}
-
-
-static double
-_krnl_bjoernstad_falck(double ktij)
-{
-#define KRNL_WIDTH     (0.25)
-	/* -1/(2 h^2)  h being the kernel width */
-	static const double _xf = -8.;
-	/* 1/sqrt(2PI h) h being the kernel width */
-	static const double _vf = 0.7978845608028654;
-	return _vf * exp(_xf * ktij * ktij);
-#undef KRNL_WIDTH
-}
-
-static double
-xcf(int lag, ald_t t1[], alf_t y1[], size_t n1, ald_t t2[], alf_t y2[], size_t n2)
-{
-	double nsum = 0.f;
-	double dsum = 0.f;
-	/* we combine edelson-krolik rectangle with gauss kernel */
-	size_t strt = 0U;
-	size_t strk = 0U;
-
-	for (size_t i = 0U; i < n1; i++) {
-		const double kti = (double)lag + t1[i];
-
-		/* find start of the interesting window */
-		for (; strt < n2 && t2[strt] < kti - 1.1; strt++);
-		for (strk = strk < strt ? strt : strk;
-		     strk < n2 && t2[strk] < kti + 1.1; strk++);
-
-		for (size_t j = strt; j < strk; j++) {
-			double K = _krnl_bjoernstad_falck(lag - (t2[j] - t1[i]));
-			dsum += K;
-			nsum += y1[i] * y2[j] * K;
-		}
-	}
-	return nsum / dsum;
-}
-
-
-static double
-crosscorrirr(ald_t t1[], alf_t y1[], size_t n1, ald_t t2[], alf_t y2[], size_t n2, int nlags, double tau)
-{
-	int best_lag;
-
-	(void)_norm_f(y1, n1, _stats_f);
-	(void)_norm_f(y2, n2, _stats_f);
-
-	with (register double rtau = 1. / tau) {
-		_dscal(t1, n1, rtau);
-		_dscal(t2, n2, rtau);
-	}
-
-	with (double bestx = -INFINITY) {
-		for (int k = -nlags; k <= nlags; k++) {
-			double x = xcf(k, t1, y1, n1, t2, y2, n2);
-
-			if (UNLIKELY(x > bestx)) {
-				bestx = x;
-				best_lag = k;
-			}
-		}
-	}
-	return (double)best_lag * tau;
-}
-
-
-#if defined STANDALONE
 #include <string.h>
 #include <stdio.h>
+#include <math.h>
 #if defined HAVE_DFP754_H
 # include <dfp754.h>
 #elif defined HAVE_DFP_STDLIB_H
 # include <dfp/stdlib.h>
 #endif	/* HAVE_DFP754_H */
 #include "hash.h"
+#include "nifty.h"
+#include "xcor.h"
+
+#define NSECS	(1000000000)
 
 typedef long unsigned int tv_t;
 typedef _Decimal32 px_t;
@@ -393,11 +187,11 @@ push(const char *line, size_t UNUSED(llen))
 }
 
 static void
-prep_book(ald_t t[], alf_t p[], book_t b, tv_t tref)
+prep_book(double *restrict t, double *restrict p, book_t b, tv_t tref)
 {
 	for (size_t i = 0U; i < b.n; i++) {
 		t[i] = (double)((long)b.t[i] - (long)tref) / (double)NSECS;
-		p[i] = (float)b.p[i];
+		p[i] = (double)b.p[i];
 	}
 	return;
 }
@@ -405,12 +199,13 @@ prep_book(ald_t t[], alf_t p[], book_t b, tv_t tref)
 static void
 skim(void)
 {
+#define NLAGS		(512U)
 #define EDG_TICKS	(3U * MAX_TICKS / 4U)
 #define LOW_TICKS	(2U * MAX_TICKS / 4U)
-	static ald_t t1[MAX_TICKS];
-	static alf_t p1[MAX_TICKS];
-	static ald_t t2[MAX_TICKS];
-	static alf_t p2[MAX_TICKS];
+	static double t1[MAX_TICKS];
+	static double p1[MAX_TICKS];
+	static double t2[MAX_TICKS];
+	static double p2[MAX_TICKS];
 
 	for (size_t i = 0U; i < nsrc; i++) {
 		size_t n1;
@@ -420,7 +215,7 @@ skim(void)
 			continue;
 		}
 		for (size_t j = 0U; j < nsrc; j++) {
-			double lag;
+			double lags[2U * NLAGS + 1U];
 			size_t n2;
 
 			if (i == j) {
@@ -435,13 +230,20 @@ skim(void)
 			prep_book(t1, p1, book[i].bid, tref);
 			prep_book(t2, p2, book[j].bid, tref);
 
-			lag = crosscorrirr(t1, p1, n1, t2, p2, n2, 512, 0.001);
-			printf("%lu.%09lu\tBID\t%s\t%s\t%g\n",
-			       metr / NSECS, metr % NSECS,
-			       src[i], src[j], lag);
+			cots_dxcor(
+				lags,
+				(dts_t){n1, t1, p1}, (dts_t){n2, t2, p2},
+				NLAGS, 0.001);
+
+			printf("%lu.%09lu\tBID\t%s\t%s\n",
+			       metr / NSECS, metr % NSECS, src[i], src[j]);
+			for (size_t k = 0U; k < countof(lags); k++) {
+				printf("\t%d\t%g\n",
+				       (int)k - (int)NLAGS, lags[k]);
+			}
 		}
 	}
-
+#if 0
 	for (size_t i = 0U; i < nsrc; i++) {
 		size_t n1;
 		tv_t tref;
@@ -471,12 +273,11 @@ skim(void)
 			       src[i], src[j], lag);
 		}
 	}
+#endif
 	return;
 }
-#endif	/* STANDALONE */
 
 
-#if defined STANDALONE
 #include "guess_lag.yucc"
 
 int
@@ -501,6 +302,5 @@ out:
 	yuck_free(argi);
 	return rc;
 }
-#endif	/* STANDALONE */
 
 /* crosscorrirr.c ends here */
