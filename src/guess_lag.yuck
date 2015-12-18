@@ -1,3 +1,5 @@
 Usage: guess_lag [OPTION]...
 
-Yay.
+Determine lags between time series.
+
+  --best                Only print best lag for each window.

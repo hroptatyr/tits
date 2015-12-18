@@ -197,7 +197,7 @@ prep_book(double *restrict t, double *restrict p, book_t b, tv_t tref)
 }
 
 static void
-skim(void)
+skim(bool best_lag_p)
 {
 #define NLAGS		(256U)
 #define EDG_TICKS	(3U * MAX_TICKS / 4U + 1U)
@@ -239,12 +239,31 @@ skim(void)
 				(dts_t){n1, t1, p1}, (dts_t){n2, t2, p2},
 				NLAGS, tau);
 
-			printf("%lu.%09lu\tBID\t%s\t%s\t%g\n",
-			       metr / NSECS, metr % NSECS, src[i], src[j], 0.01);
-			for (size_t k = 0U; k < countof(lags); k++) {
-				int lag = (int)k - (int)NLAGS;
-				double lt = (double)lag * tau;
-				printf("\t%g\t%g\n", lt, lags[k]);
+			if (best_lag_p) {
+				size_t bestl = 0U;
+				double bestx = lags[0U];
+				double lt;
+
+				for (size_t k = 1U; k < countof(lags); k++) {
+					if (lags[k] > bestx) {
+						bestx = lags[k];
+						bestl = k;
+					}
+				}
+				lt = ((int)bestl - (int)NLAGS) * tau;
+				printf("%lu.%09lu\tBID\t%s\t%s\t%g\t%g\n",
+				       metr / NSECS, metr % NSECS,
+				       src[i], src[j], lt, bestx);
+			} else {
+				/* just print them all */
+				printf("%lu.%09lu\tBID\t%s\t%s\t%g\n",
+				       metr / NSECS, metr % NSECS,
+				       src[i], src[j], 0.01);
+				for (size_t k = 0U; k < countof(lags); k++) {
+					int lag = (int)k - (int)NLAGS;
+					double lt = (double)lag * tau;
+					printf("\t%g\t%g\n", lt, lags[k]);
+				}
 			}
 		}
 	}
@@ -269,7 +288,7 @@ main(int argc, char *argv[])
 
 	for (ssize_t nrd; (nrd = getline(&line, &llen, stdin)) > 0;) {
 		push(line, nrd);
-		skim();
+		skim(argi->best_flag);
 	}
 	free(line);
 out:
