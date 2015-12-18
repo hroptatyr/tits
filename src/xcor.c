@@ -58,7 +58,7 @@
 #define _mmX_store_pd	_mm512_store_pd
 #define _mmX_add_pd	_mm512_add_pd
 #define _mmX_mul_pd	_mm512_mul_pd
-#elif 0
+#elif 1
 #define __mXd		__m256d
 #define _mmX_broadcast_sd(x)	_mm256_broadcast_sd(x)
 #define _mmX_load_pd	_mm256_load_pd
@@ -236,7 +236,7 @@ dxcf(int lag, aldts_t ts1, aldts_t ts2)
 		const double kti = (double)lag + ts1.t[i];
 
 		/* find start of the interesting window */
-		for (; strt < ts2.n && ts2.t[strt] < kti - thresh; strt++);
+		for (; strt < ts2.n && ts2.t[strt] < kti; strt++);
 		for (strk = strk < strt ? strt : strk;
 		     strk < ts2.n && ts2.t[strk] < kti + thresh; strk++);
 
