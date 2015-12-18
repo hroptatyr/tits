@@ -52,9 +52,15 @@ typedef struct {
 
 
 /* public API */
+/**
+ * Return NLAGS lag values in TGT (which should be 2*NLAGS + 1 wide)
+ * for timeseries TS1 and TS2 and resolution TAU. */
 extern int
 cots_dxcor(double *restrict tgt, dts_t ts1, dts_t ts2, int nlags, double tau);
 
+/**
+ * Return NLAGS lag values in TGT (which should be 2*NLAGS + 1 wide)
+ * for timeseries TS1 and TS2 and resolution TAU. */
 extern int
 cots_sxcor(float *restrict tgt, sts_t ts1, sts_t ts2, int nlags, float tau);
 

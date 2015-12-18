@@ -84,28 +84,25 @@ typedef struct {
 } aldts_t;
 
 
-#if 0
-static __attribute__((unused)) int
-_stats_d(double mean[static 1U], double std[static 1U], ald_t s[], size_t ns)
+static double
+_meandiff_d(const ald_t s[], size_t ns)
 {
-#define VSL_SS_TASK	(VSL_SS_MEAN | VSL_SS_2R_MOM)
-	VSLSSTaskPtr task;
-	MKL_INT ndim = 1;
-	MKL_INT dim1 = ns;
-	MKL_INT stor = VSL_SS_MATRIX_STORAGE_ROWS;
-	int rc = 0;
+	double sum = 0.;
 
-	rc += vsldSSNewTask(&task, &ndim, &dim1, &stor, s, 0, 0);
-	rc += vsldSSEditTask(task, VSL_SS_ED_MEAN, mean);
-	rc += vsldSSEditTask(task, VSL_SS_ED_2R_MOM, std);
-	rc += vsldSSCompute(task, VSL_SS_TASK, VSL_SS_METHOD_FAST);
-	rc += vslSSDeleteTask(&task);
-	return rc;
-#undef VSL_SS_TASK
+	if (UNLIKELY(ns-- <= 1U)) {
+		return NAN;
+	}
+
+	for (size_t i = 0U; i < ns; i++) {
+		sum += s[i] - s[i + 1U];
+	}
+	return -sum / (double)ns;
 }
-#else
+
 static __attribute__((unused)) int
-_stats_d(double mean[static 1U], double std[static 1U], ald_t s[], size_t ns)
+_stats_d(
+	double mean[static 1U], double std[static 1U],
+	const ald_t s[], size_t ns)
 {
 	double sum;
 
@@ -123,10 +120,11 @@ _stats_d(double mean[static 1U], double std[static 1U], ald_t s[], size_t ns)
 	*std = sqrt(sum / (double)ns);
 	return 0;
 }
-#endif
 
 static __attribute__((unused)) int
-_quasi_stats_d(double mean[static 1U], double std[static 1U], ald_t s[], size_t ns)
+_quasi_stats_d(
+	double mean[static 1U], double std[static 1U],
+	const ald_t s[], size_t ns)
 {
 	double min = s[0U], max = s[0U];
 
@@ -144,7 +142,8 @@ _quasi_stats_d(double mean[static 1U], double std[static 1U], ald_t s[], size_t 
 }
 
 static int
-_norm_d(ald_t s[], size_t ns, int(*statf)(double*, double*, ald_t[], size_t))
+_norm_d(ald_t s[], size_t ns,
+	int(*statf)(double*, double*, const ald_t[], size_t))
 {
 /* calculate (s - mean(s)) / std(s) */
 	double mu, sigma;
@@ -186,21 +185,47 @@ _dscal(ald_t s[], size_t ns, double f)
 }
 
 
-static double
-_krnl_bjoernstad_falck(double ktij)
+/* kernel closure */
+#define KRNL	_krnl_bjoernstad_falck
+#define CLO	paste(KRNL, _clo)
+#define SET	paste(KRNL, _set)
+
+static struct {
+	double width;
+	/* scale exponent */
+	double _xf;
+	/* total scale */
+	double _vf;
+} CLO;
+
+#include <stdio.h>
+static void
+SET(double tau)
 {
-#define KRNL_WIDTH	(0.25)
-	/* -1/(2 h^2)  h being the kernel width */
-	static const double _xf = -8.;
-	/* 1/sqrt(2PI h) h being the kernel width */
-	static const double _vf = 0.7978845608028654;
-	return _vf * exp(_xf * ktij * ktij);
-#undef KRNL_WIDTH
+	/* kernel width */
+	const double h = 0.25 * tau;
+
+	CLO.width = h;
+	/* -1/(2 h^2) (exponent scaling) */
+	CLO._xf = -1. / (2 * h * h);
+	/* 1/sqrt(2PI h) (scaling) */
+	CLO._vf = 1. / sqrt(2. * M_PI * h);
+	return;
 }
+
+static double
+KRNL(double ktij)
+{
+	return CLO._vf * exp(CLO._xf * ktij * ktij);
+}
+#undef CLO
+#undef SET
+#undef KRNL
 
 static double
 dxcf(int lag, aldts_t ts1, aldts_t ts2)
 {
+	const double thresh = _krnl_bjoernstad_falck_clo.width * 5.;
 	double nsum = 0.f;
 	double dsum = 0.f;
 	/* we combine edelson-krolik rectangle with gauss kernel */
@@ -211,9 +236,9 @@ dxcf(int lag, aldts_t ts1, aldts_t ts2)
 		const double kti = (double)lag + ts1.t[i];
 
 		/* find start of the interesting window */
-		for (; strt < ts2.n && ts2.t[strt] < kti - 1.1; strt++);
+		for (; strt < ts2.n && ts2.t[strt] < kti - thresh; strt++);
 		for (strk = strk < strt ? strt : strk;
-		     strk < ts2.n && ts2.t[strk] < kti + 1.1; strk++);
+		     strk < ts2.n && ts2.t[strk] < kti + thresh; strk++);
 
 		for (size_t j = strt; j < strk; j++) {
 			double K = _krnl_bjoernstad_falck(
@@ -256,9 +281,16 @@ cots_dxcor(double *restrict tgt, dts_t ts1, dts_t ts2, int nlags, double tau)
 	(void)_norm_d(y1, n1, _stats_d);
 	(void)_norm_d(y2, n2, _stats_d);
 
-	with (register double rtau = 1. / tau) {
+	with (double tmd1, tmd2) {
+		register double rtau = 1. / tau;
+
+		tmd1 = _meandiff_d(t1, n1);
+		tmd2 = _meandiff_d(t2, n2);
+		/* scale by user tau */
 		_dscal(t1, n1, rtau);
 		_dscal(t2, n2, rtau);
+		/* and set kernel width accordingly */
+		_krnl_bjoernstad_falck_set((tmd1 < tmd2 ? tmd1 : tmd2) * rtau);
 	}
 
 	for (int k = -nlags, i = 0; k <= nlags; k++, i++) {
