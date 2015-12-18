@@ -244,7 +244,7 @@ skim(void)
 			for (size_t k = 0U; k < countof(lags); k++) {
 				int lag = (int)k - (int)NLAGS;
 				double lt = (double)lag * tau;
-				printf("\t%d\t%g\t%g\n", lag, lt, lags[k]);
+				printf("\t%g\t%g\n", lt, lags[k]);
 			}
 		}
 	}
