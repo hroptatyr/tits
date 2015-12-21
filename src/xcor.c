@@ -236,7 +236,7 @@ dxcf(int lag, aldts_t ts1, aldts_t ts2)
 		const double kti = (double)lag + ts1.t[i];
 
 		/* find start of the interesting window */
-		for (; strt < ts2.n && ts2.t[strt] < kti; strt++);
+		for (; strt < ts2.n && ts2.t[strt] < kti - thresh; strt++);
 		for (strk = strk < strt ? strt : strk;
 		     strk < ts2.n && ts2.t[strk] < kti + thresh; strk++);
 
