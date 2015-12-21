@@ -49,16 +49,16 @@ EXTRA_libcotse_la_DEPENDENCIES = $(LTDLDEPS)
 EXTRA_DIST += crosscorrirr.m
 
 if BUILD_MATCLI
-mex_LTLIBRARIES += crosscorrirr_.la
-mex_DATA += crosscorrirr_.m
-crosscorrirr__la_SOURCES = crosscorrirr_.c
-crosscorrirr__la_CPPFLAGS = $(AM_CPPFLAGS)
-crosscorrirr__la_CPPFLAGS += $(octlab_CFLAGS)
-crosscorrirr__la_CPPFLAGS += $(mkl_CFLAGS)
-crosscorrirr__la_LDFLAGS = $(AM_LDFLAGS)
-crosscorrirr__la_LDFLAGS += $(mex_LDFLAGS)
-crosscorrirr__la_LDFLAGS += $(mkl_LIBS)
-crosscorrirr__la_LDFLAGS += $(XCCLDFLAGS)
+mex_LTLIBRARIES += cots_xcor.la
+mex_DATA += cots_xcor.m
+cots_xcor_la_SOURCES = cots_xcor.c
+cots_xcor_la_CPPFLAGS = $(AM_CPPFLAGS)
+cots_xcor_la_CPPFLAGS += $(octlab_CFLAGS)
+cots_xcor_la_CPPFLAGS += $(mkl_CFLAGS)
+cots_xcor_la_LDFLAGS = $(AM_LDFLAGS)
+cots_xcor_la_LDFLAGS += $(mex_LDFLAGS)
+cots_xcor_la_LDFLAGS += $(mkl_LIBS)
+cots_xcor_la_LDFLAGS += $(XCCLDFLAGS)
 endif  BUILD_MATCLI
 
 noinst_PROGRAMS += guess_lag

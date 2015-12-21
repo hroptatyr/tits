@@ -1,4 +1,4 @@
-/*** crosscorrirr.c -- cross correlation for irregular timeseries
+/*** cots_xcor.c -- cross correlation for irregular timeseries
  *
  * Copyright (C) 2015-2016 Sebastian Freundt
  *
@@ -377,4 +377,4 @@ samples (y2) and sample times (t2) must have same dimension");
 	return;
 }
 
-/* crosscorrirr.c ends here */
+/* cots_xcor.c ends here */
