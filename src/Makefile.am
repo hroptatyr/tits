@@ -59,6 +59,7 @@ cots_xcor_la_LDFLAGS = $(AM_LDFLAGS)
 cots_xcor_la_LDFLAGS += $(mex_LDFLAGS)
 cots_xcor_la_LDFLAGS += $(mkl_LIBS)
 cots_xcor_la_LDFLAGS += $(XCCLDFLAGS)
+cots_xcor_la_LIBADD = libcotse.la
 endif  BUILD_MATCLI
 
 noinst_PROGRAMS += guess_lag
