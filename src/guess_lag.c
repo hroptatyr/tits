@@ -240,7 +240,7 @@ skim(bool best_lag_p)
 				NLAGS, tau);
 
 			if (best_lag_p) {
-				size_t bestl = 0U;
+				size_t bestl = -1U;
 				double bestx = lags[0U];
 				double lt;
 
@@ -250,7 +250,11 @@ skim(bool best_lag_p)
 						bestl = k;
 					}
 				}
-				lt = ((int)bestl - (int)NLAGS) * tau;
+				if (UNLIKELY(isnan(bestx))) {
+					lt = NAN;
+				} else {
+					lt = ((int)bestl - (int)NLAGS) * tau;
+				}
 				printf("%lu.%09lu\tBID\t%s\t%s\t%g\t%g\n",
 				       metr / NSECS, metr % NSECS,
 				       src[i], src[j], lt, bestx);
