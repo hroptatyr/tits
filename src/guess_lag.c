@@ -242,7 +242,7 @@ skim(bool best_lag_p)
 				NLAGS, tau);
 
 			if (best_lag_p) {
-				size_t bestl = -1U;
+				size_t bestl = 0U;
 				double bestx = lags[0U];
 				double lt;
 
