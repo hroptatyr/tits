@@ -30,9 +30,12 @@ typedef struct {
 static size_t zsrc;
 static size_t nsrc;
 static const char **src;
-static struct {
-	book_t bid;
-	book_t ask;
+static union {
+	struct {
+		book_t bid;
+		book_t ask;
+	};
+	book_t quo[2U];
 } *book;
 static tv_t metr;
 
@@ -202,18 +205,23 @@ skim(bool best_lag_p)
 #define NLAGS		(256U)
 #define EDG_TICKS	(3U * MAX_TICKS / 4U + 1U)
 #define LOW_TICKS	(2U * MAX_TICKS / 4U + 1U)
+#define BID		0U
+#define ASK		1U
+	static const char *quostr[2U] = {"BID", "ASK"};
 	static double t1[MAX_TICKS];
 	static double p1[MAX_TICKS];
 	static double t2[MAX_TICKS];
 	static double p2[MAX_TICKS];
 	const double tau = 0.01;
+	size_t s = BID;
 
+do_it:
 	for (size_t i = 0U; i < nsrc; i++) {
 		bool booki_prepped_p = false;
 		size_t n1;
 		tv_t tref;
 
-		if ((n1 = book[i].bid.n) != EDG_TICKS) {
+		if ((n1 = book[i].quo[s].n) != EDG_TICKS) {
 			continue;
 		}
 		for (size_t j = 0U; j < nsrc; j++) {
@@ -222,17 +230,17 @@ skim(bool best_lag_p)
 
 			if (i == j) {
 				continue;
-			} else if (j < i && book[j].bid.n == EDG_TICKS) {
+			} else if (j < i && book[j].quo[s].n == EDG_TICKS) {
 				continue;
-			} else if ((n2 = book[j].bid.n) < LOW_TICKS) {
+			} else if ((n2 = book[j].quo[s].n) < LOW_TICKS) {
 				continue;
 			} else if (!booki_prepped_p) {
-				tref = book[i].bid.t[0U];
-				prep_book(t1, p1, book[i].bid, tref);
+				tref = book[i].quo[s].t[0U];
+				prep_book(t1, p1, book[i].quo[s], tref);
 				booki_prepped_p = true;
 			}
 			/* yep, do a i,j lead/lag run */
-			prep_book(t2, p2, book[j].bid, tref);
+			prep_book(t2, p2, book[j].quo[s], tref);
 
 			n1--;
 			n2--;
@@ -257,14 +265,14 @@ skim(bool best_lag_p)
 				} else {
 					lt = ((int)bestl - (int)NLAGS) * tau;
 				}
-				printf("%lu.%09lu\tBID\t%s\t%s\t%g\t%g\n",
+				printf("%lu.%09lu\t%s\t%s\t%s\t%g\t%g\n",
 				       metr / NSECS, metr % NSECS,
-				       src[i], src[j], lt, bestx);
+				       quostr[s], src[i], src[j], lt, bestx);
 			} else {
 				/* just print them all */
-				printf("%lu.%09lu\tBID\t%s\t%s\t%g\n",
+				printf("%lu.%09lu\t%s\t%s\t%s\t%g\n",
 				       metr / NSECS, metr % NSECS,
-				       src[i], src[j], 0.01);
+				       quostr[s], src[i], src[j], 0.01);
 				for (size_t k = 0U; k < countof(lags); k++) {
 					int lag = (int)k - (int)NLAGS;
 					double lt = (double)lag * tau;
@@ -272,6 +280,10 @@ skim(bool best_lag_p)
 				}
 			}
 		}
+	}
+
+	if (s++ < ASK) {
+		goto do_it;
 	}
 	return;
 }
