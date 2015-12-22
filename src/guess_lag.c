@@ -220,7 +220,9 @@ skim(bool best_lag_p)
 			double lags[2U * NLAGS + 1U];
 			size_t n2;
 
-			if (j < i && book[j].bid.n == EDG_TICKS) {
+			if (i == j) {
+				continue;
+			} else if (j < i && book[j].bid.n == EDG_TICKS) {
 				continue;
 			} else if ((n2 = book[j].bid.n) < LOW_TICKS) {
 				continue;
