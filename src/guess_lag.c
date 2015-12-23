@@ -54,9 +54,9 @@ make_book(void)
 static book_t
 book_slid(book_t b)
 {
-	size_t nun = (b.n + 1U) / 2U;
+	size_t nun = b.n - MAX_TICKS / 2U;
 
-	b.n -= nun;
+	b.n = MAX_TICKS / 2U;
 	memcpy(b.t, b.t + nun, b.n * sizeof(*b.t));
 	memcpy(b.p, b.p + nun, b.n * sizeof(*b.p));
 	return b;
@@ -230,8 +230,6 @@ do_it:
 
 			if (i == j) {
 				continue;
-			} else if (j < i && book[j].quo[s].n == EDG_TICKS) {
-				continue;
 			} else if ((n2 = book[j].quo[s].n) < LOW_TICKS) {
 				continue;
 			} else if (!booki_prepped_p) {
@@ -279,6 +277,14 @@ do_it:
 					printf("\t%g\t%g\n", lt, lags[k]);
 				}
 			}
+		}
+	}
+
+	/* crop the guys we've just done so we won't do them again
+	 * just because another tick has been added to the counter-series */
+	for (size_t i = 0U; i < nsrc; i++) {
+		if (book[i].quo[s].n == EDG_TICKS) {
+			book[i].quo[s] = book_slid(book[i].quo[s]);
 		}
 	}
 
