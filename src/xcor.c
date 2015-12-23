@@ -225,7 +225,10 @@ KRNL(double ktij)
 static double
 dxcf(int lag, aldts_t ts1, aldts_t ts2)
 {
-	const double thresh = _krnl_bjoernstad_falck_clo.width * 5.;
+#define KRNL	_krnl_bjoernstad_falck
+#define CLO	paste(KRNL, _clo)
+#define SET	paste(KRNL, _set)
+	const double thresh = CLO.width * 5.;
 	double nsum = 0.f;
 	double dsum = 0.f;
 	/* we combine edelson-krolik rectangle with gauss kernel */
@@ -241,8 +244,7 @@ dxcf(int lag, aldts_t ts1, aldts_t ts2)
 		     strk < ts2.n && ts2.t[strk] < kti + thresh; strk++);
 
 		for (size_t j = strt; j < strk; j++) {
-			double K = _krnl_bjoernstad_falck(
-				lag - (ts2.t[j] - ts1.t[i]));
+			double K = KRNL(lag - (ts2.t[j] - ts1.t[i]));
 			dsum += K;
 			nsum += ts1.y[i] * ts2.y[j] * K;
 		}
@@ -290,7 +292,7 @@ cots_dxcor(double *restrict tgt, dts_t ts1, dts_t ts2, int nlags, double tau)
 		_dscal(t1, n1, rtau);
 		_dscal(t2, n2, rtau);
 		/* and set kernel width accordingly */
-		_krnl_bjoernstad_falck_set((tmd1 < tmd2 ? tmd1 : tmd2) * rtau);
+		SET((tmd1 < tmd2 ? tmd1 : tmd2) * rtau);
 	}
 
 	for (int k = -nlags, i = 0; k <= nlags; k++, i++) {
@@ -301,6 +303,9 @@ cots_dxcor(double *restrict tgt, dts_t ts1, dts_t ts2, int nlags, double tau)
 	_mm_free(t2);
 	_mm_free(y1);
 	_mm_free(y2);
+#undef CLO
+#undef SET
+#undef KRNL
 	return 0;
 }
 
