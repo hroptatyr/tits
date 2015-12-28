@@ -1,10 +1,10 @@
-function varargout = crosscorrirr(t1, y1, t2, y2, tau, nlags)
-% CROSSCORRIRR_ irregular timeseries cross-correlation
+function varargout = tits_xcor(t1, y1, t2, y2, tau, nlags)
+% TITS_XCOR irregular timeseries cross-correlation
 %
 %  Syntax:
 %
-%    [xcf, lags] = crosscorrirr(t1, y1, t2, y2, tau)
-%    [xcf, lags] = crosscorrirr(t1, y1, t2, y2, tau, numLags)
+%    [xcf, lags] = tits_xcor(t1, y1, t2, y2, tau)
+%    [xcf, lags] = tits_xcor(t1, y1, t2, y2, tau, numLags)
 %
 % Description:
 %
