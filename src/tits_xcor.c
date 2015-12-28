@@ -1,10 +1,10 @@
-/*** cots_xcor.c -- cross correlation for irregular timeseries
+/*** tits_xcor.c -- cross correlation for irregular timeseries
  *
  * Copyright (C) 2015-2016 Sebastian Freundt
  *
  * Author:  Sebastian Freundt <freundt@ga-group.nl>
  *
- * This file is part of cotse.
+ * This file is part of tits.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -124,7 +124,7 @@ samples (y2) and sample times (t2) must have same dimension");
 	/* beef */
 	with (const double *t1 = mxGetPr(prhs[0U]), *y1 = mxGetPr(prhs[1U]),
 	      *t2 = mxGetPr(prhs[2U]), *y2 = mxGetPr(prhs[3U])) {
-		cots_dxcor(
+		tits_dxcor(
 			tgt,
 			(dts_t){n1, t1, y1}, (dts_t){n2, t2, y2},
 			nlags, tau);
@@ -142,4 +142,4 @@ samples (y2) and sample times (t2) must have same dimension");
 	return;
 }
 
-/* cots_xcor.c ends here */
+/* tits_xcor.c ends here */

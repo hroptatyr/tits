@@ -20,7 +20,7 @@ CLEANFILES += version.c
 EXTRA_DIST += version.c.in
 
 if BUILD_MATCLI
-mexdir = $(MATLABPATH)/cotse
+mexdir = $(MATLABPATH)/tits
 octlab_CFLAGS = -DMATLAB_MEX_FILE $(matlab_CFLAGS)
 else  !BUILD_MATCLI
 ## no idea what we're doing here
@@ -35,31 +35,31 @@ mex_DATA =
 mkl_CFLAGS = -I/opt/intel/mkl/include -mkl -xHost
 mkl_LIBS = -L/opt/intel/mkl/lib/intel64 -Wl,-rpath,/opt/intel/mkl/lib/intel64 -lmkl_rt
 
-noinst_LTLIBRARIES += libcotse.la
-libcotse_la_SOURCES = cotse.h
-libcotse_la_SOURCES += hash.c hash.h
-libcotse_la_SOURCES += xcor.c xcor.h
-libcotse_la_SOURCES += version.c version.h
-libcotse_la_CPPFLAGS = $(AM_CPPFLAGS)
-libcotse_la_CPPFLAGS += $(mkl_CFLAGS)
-libcotse_la_LDFLAGS = $(AM_LDFLAGS)
-libcotse_la_LDFLAGS += $(mkl_LIBS)
-EXTRA_libcotse_la_DEPENDENCIES = $(LTDLDEPS)
+noinst_LTLIBRARIES += libtits.la
+libtits_la_SOURCES = tits.h
+libtits_la_SOURCES += hash.c hash.h
+libtits_la_SOURCES += xcor.c xcor.h
+libtits_la_SOURCES += version.c version.h
+libtits_la_CPPFLAGS = $(AM_CPPFLAGS)
+libtits_la_CPPFLAGS += $(mkl_CFLAGS)
+libtits_la_LDFLAGS = $(AM_LDFLAGS)
+libtits_la_LDFLAGS += $(mkl_LIBS)
+EXTRA_libtits_la_DEPENDENCIES = $(LTDLDEPS)
 
 EXTRA_DIST += crosscorrirr.m
 
 if BUILD_MATCLI
-mex_LTLIBRARIES += cots_xcor.la
-mex_DATA += cots_xcor.m
-cots_xcor_la_SOURCES = cots_xcor.c
-cots_xcor_la_CPPFLAGS = $(AM_CPPFLAGS)
-cots_xcor_la_CPPFLAGS += $(octlab_CFLAGS)
-cots_xcor_la_CPPFLAGS += $(mkl_CFLAGS)
-cots_xcor_la_LDFLAGS = $(AM_LDFLAGS)
-cots_xcor_la_LDFLAGS += $(mex_LDFLAGS)
-cots_xcor_la_LDFLAGS += $(mkl_LIBS)
-cots_xcor_la_LDFLAGS += $(XCCLDFLAGS)
-cots_xcor_la_LIBADD = libcotse.la
+mex_LTLIBRARIES += tits_xcor.la
+mex_DATA += tits_xcor.m
+tits_xcor_la_SOURCES = tits_xcor.c
+tits_xcor_la_CPPFLAGS = $(AM_CPPFLAGS)
+tits_xcor_la_CPPFLAGS += $(octlab_CFLAGS)
+tits_xcor_la_CPPFLAGS += $(mkl_CFLAGS)
+tits_xcor_la_LDFLAGS = $(AM_LDFLAGS)
+tits_xcor_la_LDFLAGS += $(mex_LDFLAGS)
+tits_xcor_la_LDFLAGS += $(mkl_LIBS)
+tits_xcor_la_LDFLAGS += $(XCCLDFLAGS)
+tits_xcor_la_LIBADD = libtits.la
 endif  BUILD_MATCLI
 
 noinst_PROGRAMS += guess_lag
@@ -71,7 +71,7 @@ guess_lag_CPPFLAGS += $(dfp754_CFLAGS)
 guess_lag_LDFLAGS = $(AM_LDFLAGS)
 guess_lag_LDFLAGS += $(mkl_LIBS)
 guess_lag_LDFLAGS += $(dfp754_LIBS)
-guess_lag_LDADD = libcotse.la
+guess_lag_LDADD = libtits.la
 BUILT_SOURCES += guess_lag.yucc
 
 

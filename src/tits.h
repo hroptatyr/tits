@@ -4,7 +4,7 @@
  *
  * Author:  Sebastian Freundt <freundt@ga-group.nl>
  *
- * This file is part of cotse.
+ * This file is part of tits.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -34,12 +34,12 @@
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  ***/
-#if !defined INCLUDED_cotse_h_
-#define INCLUDED_cotse_h_
+#if !defined INCLUDED_tits_h_
+#define INCLUDED_tits_h_
 #include <stdint.h>
 
-typedef uint64_t cots_ts_t;
-typedef uint64_t cots_hx_t;
+typedef uint64_t tits_ts_t;
+typedef uint64_t tits_hx_t;
 
 /* helper for tcells and mcells, when used as object the LEN slot
  * is expected to be used and denotes the length of the cell in bytes,
@@ -49,21 +49,21 @@ typedef uint64_t cots_hx_t;
 typedef union {
 	size_t off;
 	size_t len;
-} cots_sz_t;
+} tits_sz_t;
 
 typedef struct {
-	cots_ts_t ts;
-	cots_sz_t sz;
-} cots_tcell_t;
+	tits_ts_t ts;
+	tits_sz_t sz;
+} tits_tcell_t;
 
 typedef struct {
-	cots_hx_t metric;
+	tits_hx_t metric;
 	uint8_t data[];
-} cots_mcell_t;
+} tits_mcell_t;
 
 
 /* public API */
 
 
 
-#endif	/* INCLUDED_cotse_h_ */
+#endif	/* INCLUDED_tits_h_ */

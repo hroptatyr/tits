@@ -3,7 +3,7 @@ dnl Autoconf startup.
 dnl -------------------------------------------------------------------------
 
 AC_PREREQ([2.63])
-AC_INIT([cotse], [0.1.0.GIT], [freundt@ga-group.nl])
+AC_INIT([tits], [0.1.0.GIT], [freundt@ga-group.nl])
 AC_CONFIG_AUX_DIR([build-aux])
 AC_CONFIG_HEADERS([src/config.h])
 AC_CONFIG_MACRO_DIR([m4])
@@ -13,7 +13,7 @@ dnl Local copyright notices.
 dnl -------------------------------------------------------------------------
 
 AC_COPYRIGHT([dnl
-#### Configuration script for cotse
+#### Configuration script for tits
 #### Copyright (C) 2010-2015  Sebastian Freundt
 
 ### Don't edit this script!

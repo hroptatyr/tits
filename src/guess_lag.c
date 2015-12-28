@@ -242,7 +242,7 @@ do_it:
 
 			n1--;
 			n2--;
-			cots_dxcor(
+			tits_dxcor(
 				lags,
 				(dts_t){n1, t1, p1}, (dts_t){n2, t2, p2},
 				NLAGS, tau);

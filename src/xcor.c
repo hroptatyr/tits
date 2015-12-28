@@ -4,7 +4,7 @@
  *
  * Author:  Sebastian Freundt <freundt@ga-group.nl>
  *
- * This file is part of cotse.
+ * This file is part of tits.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -255,7 +255,7 @@ dxcf(int lag, aldts_t ts1, aldts_t ts2)
 
 /* public API */
 int
-cots_dxcor(double *restrict tgt, dts_t ts1, dts_t ts2, int nlags, double tau)
+tits_dxcor(double *restrict tgt, dts_t ts1, dts_t ts2, int nlags, double tau)
 {
 	size_t n1, n2;
 	ald_t *t1, *t2;
