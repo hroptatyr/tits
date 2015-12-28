@@ -90,6 +90,22 @@ if test "${with_matlab}" = "yes"; then
 fi
 AM_CONDITIONAL([BUILD_MATCLI], [test "${have_matlab}" = "yes"])
 
+## check for R
+AC_ARG_WITH([R], [
+AS_HELP_STRING([--with-R], [Build R contribs, default: no.])],
+        [dnl
+		if test "${withval}" = "yes"; then
+			PKG_CHECK_MODULES([R], [libR >= 2.0.0], [
+				with_R="yes"
+			], [
+				with_R="no"
+			])
+		else
+			with_R="${withval}"
+		fi
+        ], [with_R="no"])
+AM_CONDITIONAL([BUILD_RCLI], [test "${with_R}" = "yes"])
+
 ## libtool goddess^Wgoodness
 ## has to be down here as we're turning -Werror'ing off
 LT_INIT
@@ -99,6 +115,9 @@ SXE_CHECK_LIBTOOL
 AC_CONFIG_FILES([Makefile])
 AC_CONFIG_FILES([build-aux/Makefile])
 AC_CONFIG_FILES([src/Makefile])
+AC_CONFIG_FILES([aux/Makefile])
+AC_CONFIG_FILES([aux/matlab/Makefile])
+AC_CONFIG_FILES([aux/R/Makefile])
 AC_CONFIG_FILES([test/Makefile])
 AC_OUTPUT
 

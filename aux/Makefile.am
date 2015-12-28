@@ -1,0 +1,16 @@
+### Makefile.am
+include $(top_builddir)/version.mk
+
+AM_CPPFLAGS = -D_POSIX_C_SOURCE=200112L -D_XOPEN_SOURCE=600 -D_BSD_SOURCE
+AM_LDFLAGS =
+EXTRA_DIST =
+
+SUBDIRS =
+
+if BUILD_MATCLI
+SUBDIRS += matlab
+endif  BUILD_MATCLI
+
+if BUILD_RCLI
+SUBDIRS += R
+endif  BUILD_RCLI
