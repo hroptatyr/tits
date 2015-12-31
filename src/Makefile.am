@@ -23,7 +23,7 @@ mkl_CFLAGS = -I/opt/intel/mkl/include -mkl -xHost
 mkl_LIBS = -L/opt/intel/mkl/lib/intel64 -Wl,-rpath,/opt/intel/mkl/lib/intel64 -lmkl_rt
 
 noinst_LTLIBRARIES += libtits.la
-libtits_la_SOURCES = tits.h
+libtits_la_SOURCES =
 libtits_la_SOURCES += nifty.h
 libtits_la_SOURCES += hash.c hash.h
 libtits_la_SOURCES += xcor.c xcor.h
