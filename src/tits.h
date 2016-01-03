@@ -1,4 +1,4 @@
-/*** xcor.h -- cross correlation for irregular timeseries
+/*** tits.h -- tools for irregular timeseries
  *
  * Copyright (C) 2015-2016 Sebastian Freundt
  *
@@ -34,22 +34,20 @@
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  ***/
-#if !defined INCLUDED_xcor_h_
-#define INCLUDED_xcor_h_
-#include "tits.h"
+#if !defined INCLUDED_tits_h_
+#define INCLUDED_tits_h_
+#include <stdlib.h>
 
-
-/* public API */
-/**
- * Return NLAGS lag values in TGT (which should be 2*NLAGS + 1 wide)
- * for timeseries TS1 and TS2 and resolution TAU. */
-extern int
-tits_dxcor(double *restrict tgt, dts_t ts1, dts_t ts2, int nlags, double tau);
+typedef struct {
+	size_t n;
+	const double *t;
+	const double *y;
+} dts_t;
 
-/**
- * Return NLAGS lag values in TGT (which should be 2*NLAGS + 1 wide)
- * for timeseries TS1 and TS2 and resolution TAU. */
-extern int
-tits_sxcor(float *restrict tgt, sts_t ts1, sts_t ts2, int nlags, float tau);
+typedef struct {
+	size_t n;
+	const float *t;
+	const float *y;
+} sts_t;
 
-#endif	/* INCLUDED_xcor_h_ */
+#endif	/* INCLUDED_tits_h_ */
