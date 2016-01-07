@@ -58,7 +58,7 @@
 #define _mmX_store_pd	_mm512_store_pd
 #define _mmX_add_pd	_mm512_add_pd
 #define _mmX_mul_pd	_mm512_mul_pd
-#elif 1
+#elif 0
 #define __mXd		__m256d
 #define _mmX_broadcast_sd(x)	_mm256_broadcast_sd(x)
 #define _mmX_load_pd	_mm256_load_pd
