@@ -306,7 +306,7 @@ do_it:
 				/* just print them all */
 				printf("%lu.%09lu\t%s\t%s\t%s\t%g\n",
 				       metr / NSECS, metr % NSECS,
-				       quostr[s], src[i], src[j], 0.01);
+				       quostr[s], src[i], src[j], tau);
 				for (size_t k = 0U; k < countof(lags); k++) {
 					int lag = (int)k - (int)NLAGS;
 					double lt = (double)lag * tau;
