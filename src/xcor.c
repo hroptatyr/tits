@@ -49,31 +49,54 @@
 #include "nifty.h"
 
 #define widthof(x)	(sizeof(x) / sizeof(double))
+#if !defined _
+# define _(x)		(x)
+#endif	/* !_ */
 
-#if 0
+#if !defined __mXd
+#if 1
 /* AVX-512 */
 #define __mXd		__m512d
+#define __mXs		__m512
 #define _mmX_broadcast_sd(x)	_mm512_broadcastsd_pd(_mm_load1_pd(x))
+#define _mmX_broadcast_ss(x)	_mm512_broadcastss_ps(_mm_load1_ps(x))
 #define _mmX_load_pd	_mm512_load_pd
+#define _mmX_load_ps	_mm512_load_ps
 #define _mmX_store_pd	_mm512_store_pd
+#define _mmX_store_ps	_mm512_store_ps
 #define _mmX_add_pd	_mm512_add_pd
+#define _mmX_add_ps	_mm512_add_ps
 #define _mmX_mul_pd	_mm512_mul_pd
+#define _mmX_mul_ps	_mm512_mul_ps
 #elif 0
 #define __mXd		__m256d
+#define __mXs		__m256
 #define _mmX_broadcast_sd(x)	_mm256_broadcast_sd(x)
+#define _mmX_broadcast_ss(x)	_mm256_broadcast_ss(x)
 #define _mmX_load_pd	_mm256_load_pd
+#define _mmX_load_ps	_mm256_load_ps
 #define _mmX_store_pd	_mm256_store_pd
+#define _mmX_store_ps	_mm256_store_ps
 #define _mmX_add_pd	_mm256_add_pd
+#define _mmX_add_ps	_mm256_add_ps
 #define _mmX_mul_pd	_mm256_mul_pd
+#define _mmX_mul_ps	_mm256_mul_ps
 #else
 /* plain old SSE */
 #define __mXd		__m128d
+#define __mXs		__m128
 #define _mmX_broadcast_sd(x)	_mm_load1_pd(x)
+#define _mmX_broadcast_ss(x)	_mm_load1_ps(x)
 #define _mmX_load_pd	_mm_load_pd
+#define _mmX_load_ps	_mm_load_ps
 #define _mmX_store_pd	_mm_store_pd
+#define _mmX_store_ps	_mm_store_ps
 #define _mmX_add_pd	_mm_add_pd
+#define _mmX_add_ps	_mm_add_ps
 #define _mmX_mul_pd	_mm_mul_pd
+#define _mmX_mul_ps	_mm_mul_ps
 #endif
+#endif	/* !__mXd */
 
 typedef double ald_t __attribute__((aligned(sizeof(__mXd))));
 
@@ -157,7 +180,7 @@ _norm_d(ald_t s[], size_t ns,
 	/* go for (s + -mu) * 1/sigma */
 	mu = -mu;
 	mmu = _mmX_broadcast_sd(&mu);
-	sigma = 1. / sigma;
+	sigma = _(1.) / sigma;
 	msd = _mmX_broadcast_sd(&sigma);
 	for (size_t i = 0U; i + widthof(__mXd) - 1U < ns; i += widthof(__mXd)) {
 		register __mXd ms;
@@ -203,13 +226,13 @@ static void
 SET(double tau)
 {
 	/* kernel width */
-	const double h = 0.25 * tau;
+	const double h = _(0.25) * tau;
 
 	CLO.width = h;
 	/* -1/(2 h^2) (exponent scaling) */
-	CLO._xf = -1. / (2 * h * h);
+	CLO._xf = _(-1.) / (_(2.) * h * h);
 	/* 1/sqrt(2PI h) (scaling) */
-	CLO._vf = 1. / sqrt(2. * M_PI * h);
+	CLO._vf = _(1.) / sqrt(_(2.) * M_PI * h);
 	return;
 }
 
@@ -228,9 +251,9 @@ dxcf(int lag, aldts_t ts1, aldts_t ts2)
 #define KRNL	_krnl_bjoernstad_falck
 #define CLO	paste(KRNL, _clo)
 #define SET	paste(KRNL, _set)
-	const double thresh = CLO.width * 5.;
-	double nsum = 0.f;
-	double dsum = 0.f;
+	const double thresh = CLO.width * _(5.);
+	double nsum = _(0.);
+	double dsum = _(0.);
 	/* we combine edelson-krolik rectangle with gauss kernel */
 	size_t strt = 0U;
 	size_t strk = 0U;
@@ -284,7 +307,7 @@ tits_dxcor(double *restrict tgt, dts_t ts1, dts_t ts2, int nlags, double tau)
 	(void)_norm_d(y2, n2, _stats_d);
 
 	with (double tmd1, tmd2) {
-		register double rtau = 1. / tau;
+		register double rtau = _(1.) / tau;
 
 		tmd1 = _meandiff_d(t1, n1);
 		tmd2 = _meandiff_d(t2, n2);
@@ -308,5 +331,46 @@ tits_dxcor(double *restrict tgt, dts_t ts1, dts_t ts2, int nlags, double tau)
 #undef KRNL
 	return 0;
 }
+
+#if !defined double
+# define double		float
+# define dts_t		sts_t
+# define ald_t		als_t
+# define aldts_t	alsts_t
+
+# define _dscal		_sscal
+# define _norm_d	_norm_s
+# define _stats_d	_stats_s
+# define _quasi_stats_d	_quasi_stats_s
+# define _meandiff_d	_meandiff_s
+
+# define dxcf		sxcf
+# define _krnl_bjoernstad_falck	_krnl_bjoernstad_falck_s
+# define tits_dxcor	tits_sxcor
+
+/* libm */
+# define sqrt		sqrtf
+# define exp		expf
+
+/* intrins */
+# undef __mXd
+# undef _mmX_broadcast_sd
+# undef _mmX_load_pd
+# undef _mmX_store_pd
+# undef _mmX_add_pd
+# undef _mmX_mul_pd
+# define __mXd		__mXs
+# define _mmX_broadcast_sd	_mmX_broadcast_ss
+# define _mmX_load_pd	_mmX_load_ps
+# define _mmX_store_pd	_mmX_store_ps
+# define _mmX_add_pd	_mmX_add_ps
+# define _mmX_mul_pd	_mmX_mul_ps
+
+# undef _
+# define _(x)		(x ## f)
+
+/* now go through it again for single precision */
+# include __FILE__
+#endif	/* !double */
 
 /* xcor.c ends here */
