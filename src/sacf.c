@@ -308,8 +308,8 @@ tits_dsacf(double *restrict tgt, dts_t ts, size_t nlags, double tau)
 		SET(tmd * rtau);
 	}
 
-	for (size_t k = 1U; k <= nlags; k++) {
-		tgt[k] = dacf(k, (aldts_t){n, t, y});
+	for (size_t k = 0U; k < nlags; k++) {
+		tgt[k] = dacf(k + 1U, (aldts_t){n, t, y});
 	}
 
 	_mm_free(t);
