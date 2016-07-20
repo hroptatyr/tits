@@ -44,4 +44,20 @@ sacf_02_LDFLAGS = $(AM_LDFLAGS)
 sacf_02_LDFLAGS += $(gsl_LIBS)
 sacf_02_LDFLAGS += $(tits_LIBS)
 
+bin_tests += sacf_03
+sacf_03_CPPFLAGS = $(AM_CPPFLAGS)
+sacf_03_CPPFLAGS += $(gsl_CFLAGS)
+sacf_03_CPPFLAGS += $(tits_CFLAGS)
+sacf_03_LDFLAGS = $(AM_LDFLAGS)
+sacf_03_LDFLAGS += $(gsl_LIBS)
+sacf_03_LDFLAGS += $(tits_LIBS)
+
+bin_tests += sacf_04
+sacf_04_CPPFLAGS = $(AM_CPPFLAGS)
+sacf_04_CPPFLAGS += $(gsl_CFLAGS)
+sacf_04_CPPFLAGS += $(tits_CFLAGS)
+sacf_04_LDFLAGS = $(AM_LDFLAGS)
+sacf_04_LDFLAGS += $(gsl_LIBS)
+sacf_04_LDFLAGS += $(tits_LIBS)
+
 ## Makefile.am ends here
