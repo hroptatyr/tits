@@ -14,10 +14,26 @@ EXTRA_DIST = $(BUILT_SOURCES) $(TESTS)
 TESTS =
 TEST_EXTENSIONS =
 BUILT_SOURCES =
-dt_tests =
 bin_tests =
 batch_tests =
 check_PROGRAMS =
 CLEANFILES = $(check_PROGRAMS)
+
+tits_CFLAGS = -I$(top_srcdir)/src
+tits_LIBS = $(top_builddir)/src/libtits.la
+
+gsl_CFLAGS := $(shell gsl-config --cflags)
+gsl_LIBS := $(shell gsl-config --libs)
+
+check_PROGRAMS += $(bin_tests)
+TESTS += $(bin_tests)
+
+bin_tests += sacf_01
+sacf_01_CPPFLAGS = $(AM_CPPFLAGS)
+sacf_01_CPPFLAGS += $(gsl_CFLAGS)
+sacf_01_CPPFLAGS += $(tits_CFLAGS)
+sacf_01_LDFLAGS = $(AM_LDFLAGS)
+sacf_01_LDFLAGS += $(gsl_LIBS)
+sacf_01_LDFLAGS += $(tits_LIBS)
 
 ## Makefile.am ends here
