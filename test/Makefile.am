@@ -14,10 +14,50 @@ EXTRA_DIST = $(BUILT_SOURCES) $(TESTS)
 TESTS =
 TEST_EXTENSIONS =
 BUILT_SOURCES =
-dt_tests =
 bin_tests =
 batch_tests =
 check_PROGRAMS =
 CLEANFILES = $(check_PROGRAMS)
+
+tits_CFLAGS = -I$(top_srcdir)/src
+tits_LIBS = $(top_builddir)/src/libtits.la
+
+gsl_CFLAGS := $(shell gsl-config --cflags)
+gsl_LIBS := $(shell gsl-config --libs)
+
+check_PROGRAMS += $(bin_tests)
+TESTS += $(bin_tests)
+
+bin_tests += sacf_01
+sacf_01_CPPFLAGS = $(AM_CPPFLAGS)
+sacf_01_CPPFLAGS += $(gsl_CFLAGS)
+sacf_01_CPPFLAGS += $(tits_CFLAGS)
+sacf_01_LDFLAGS = $(AM_LDFLAGS)
+sacf_01_LDFLAGS += $(gsl_LIBS)
+sacf_01_LDFLAGS += $(tits_LIBS)
+
+bin_tests += sacf_02
+sacf_02_CPPFLAGS = $(AM_CPPFLAGS)
+sacf_02_CPPFLAGS += $(gsl_CFLAGS)
+sacf_02_CPPFLAGS += $(tits_CFLAGS)
+sacf_02_LDFLAGS = $(AM_LDFLAGS)
+sacf_02_LDFLAGS += $(gsl_LIBS)
+sacf_02_LDFLAGS += $(tits_LIBS)
+
+bin_tests += sacf_03
+sacf_03_CPPFLAGS = $(AM_CPPFLAGS)
+sacf_03_CPPFLAGS += $(gsl_CFLAGS)
+sacf_03_CPPFLAGS += $(tits_CFLAGS)
+sacf_03_LDFLAGS = $(AM_LDFLAGS)
+sacf_03_LDFLAGS += $(gsl_LIBS)
+sacf_03_LDFLAGS += $(tits_LIBS)
+
+bin_tests += sacf_04
+sacf_04_CPPFLAGS = $(AM_CPPFLAGS)
+sacf_04_CPPFLAGS += $(gsl_CFLAGS)
+sacf_04_CPPFLAGS += $(tits_CFLAGS)
+sacf_04_LDFLAGS = $(AM_LDFLAGS)
+sacf_04_LDFLAGS += $(gsl_LIBS)
+sacf_04_LDFLAGS += $(tits_LIBS)
 
 ## Makefile.am ends here
