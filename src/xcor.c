@@ -54,7 +54,7 @@
 #endif	/* !_ */
 
 #if !defined __mXd
-#if 1
+#if 0
 /* AVX-512 */
 #define __mXd		__m512d
 #define __mXs		__m512
@@ -68,7 +68,7 @@
 #define _mmX_add_ps	_mm512_add_ps
 #define _mmX_mul_pd	_mm512_mul_pd
 #define _mmX_mul_ps	_mm512_mul_ps
-#elif 0
+#elif 1
 #define __mXd		__m256d
 #define __mXs		__m256
 #define _mmX_broadcast_sd(x)	_mm256_broadcast_sd(x)
