@@ -72,4 +72,16 @@ acf24ar_02_CPPFLAGS += $(tits_CFLAGS)
 acf24ar_02_LDFLAGS = $(AM_LDFLAGS)
 acf24ar_02_LDFLAGS += $(tits_LIBS)
 
+bin_tests += roots_01
+roots_01_CPPFLAGS = $(AM_CPPFLAGS)
+roots_01_CPPFLAGS += $(tits_CFLAGS)
+roots_01_LDFLAGS = $(AM_LDFLAGS)
+roots_01_LDFLAGS += $(tits_LIBS)
+
+bin_tests += roots_02
+roots_02_CPPFLAGS = $(AM_CPPFLAGS)
+roots_02_CPPFLAGS += $(tits_CFLAGS)
+roots_02_LDFLAGS = $(AM_LDFLAGS)
+roots_02_LDFLAGS += $(tits_LIBS)
+
 ## Makefile.am ends here
