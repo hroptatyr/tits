@@ -30,6 +30,7 @@ libtits_la_SOURCES += xcor.c xcor.h
 libtits_la_SOURCES += sacf.c sacf.h
 libtits_la_SOURCES += perio.c perio.h
 libtits_la_SOURCES += acf24ar.c acf24ar.h
+libtits_la_SOURCES += roots.c roots.h
 libtits_la_SOURCES += version.c version.h
 libtits_la_CPPFLAGS = $(AM_CPPFLAGS)
 libtits_la_CPPFLAGS += $(mkl_CFLAGS)
