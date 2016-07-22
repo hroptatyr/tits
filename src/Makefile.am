@@ -50,6 +50,13 @@ guess_lag_LDFLAGS += $(dfp754_LIBS)
 guess_lag_LDADD = libtits.la
 BUILT_SOURCES += guess_lag.yucc
 
+noinst_PROGRAMS += roots
+roots_SOURCES = roots.c roots.yuck
+roots_CPPFLAGS = $(AM_CPPFLAGS)
+roots_CPPFLAGS += -DSTANDALONE
+roots_LDADD = libtits.la
+BUILT_SOURCES += roots.yucc
+
 
 ## version rules
 version.c: version.c.in $(top_builddir)/.version

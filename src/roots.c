@@ -48,6 +48,8 @@
 #include "roots.h"
 #include "nifty.h"
 
+
+#if !defined STANDALONE
 #if defined __INTEL_COMPILER
 # pragma warning (push)
 # pragma warning (disable:981)
@@ -332,5 +334,42 @@ linear:
 /* now go through it again for single precision */
 # include __FILE__
 #endif	/* !double */
+#endif	/* !STANDALONE */
+
+
+#if defined STANDALONE && !defined INCLUDED_main
+# define INCLUDED_main
+# include "roots.yucc"
+
+int
+main(int argc, char *argv[])
+{
+	static yuck_t argi[1U];
+	int rc;
+
+	if (yuck_parse(argi, argc, argv) < 0) {
+		return 1;
+	}
+
+	if (argi->nargs == 0U) {
+		return 0;
+	}
+
+	with (double p[argi->nargs]) {
+		complex double r[argi->nargs];
+
+		for (size_t i = 0U; i < argi->nargs; i++) {
+			p[i] = strtod(argi->args[i], NULL);
+		}
+
+		rc = tits_cdroots(r, p, countof(p) - 1U) < 0;
+		for (size_t i = 0U; i < countof(r) - 1U; i++) {
+			printf("%f + %fi\n", creal(r[i]), cimag(r[i]));
+		}
+	}
+	yuck_free(argi);
+	return rc;
+}
+#endif	/* STANDALONE */
 
 /* roots.c ends here */
