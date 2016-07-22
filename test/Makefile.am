@@ -84,4 +84,16 @@ roots_02_CPPFLAGS += $(tits_CFLAGS)
 roots_02_LDFLAGS = $(AM_LDFLAGS)
 roots_02_LDFLAGS += $(tits_LIBS)
 
+bin_tests += roots_03
+roots_03_CPPFLAGS = $(AM_CPPFLAGS)
+roots_03_CPPFLAGS += $(tits_CFLAGS)
+roots_03_LDFLAGS = $(AM_LDFLAGS)
+roots_03_LDFLAGS += $(tits_LIBS)
+
+bin_tests += roots_04
+roots_04_CPPFLAGS = $(AM_CPPFLAGS)
+roots_04_CPPFLAGS += $(tits_CFLAGS)
+roots_04_LDFLAGS = $(AM_LDFLAGS)
+roots_04_LDFLAGS += $(tits_LIBS)
+
 ## Makefile.am ends here

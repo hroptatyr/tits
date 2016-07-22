@@ -1,5 +1,6 @@
 #include <stddef.h>
 #include <math.h>
+#include <stdio.h>
 #include "roots.h"
 #include "nifty.h"
 
@@ -16,6 +17,12 @@ int main(void)
 	rc = tits_droots(r, p, countof(p) - 1U) != 3;
 	for (size_t i = 0U; i < countof(r); i++) {
 		rc |= (int)trunc(r[i] * 1000) != ref[i];
+	}
+	if (rc) {
+		for (size_t i = 0U; i < countof(r); i++) {
+			printf(" %f", r[i]);
+		}
+		putchar('\n');
 	}
 	return rc;
 }
