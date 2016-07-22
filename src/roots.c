@@ -45,7 +45,6 @@
 #include <float.h>
 #include <complex.h>
 #include <tgmath.h>
-#include <assert.h>
 #include "roots.h"
 #include "nifty.h"
 
@@ -194,18 +193,6 @@ _laguerre_cd(const double *p, size_t n, complex double x)
 {
 /* find one root of polynomial P of degree N, guess to be at X */
 	size_t iter = 32U;
-	/* first deriv */
-	double p1[n];
-	/* second deriv */
-	double p2[n];
-
-	/* precalc first and second deriv */
-	for (size_t i = 0U; i < n; i++) {
-		p1[i] = p[i + 1U] * (i + 1);
-	}
-	for (size_t i = 0U; i < n - 1U; i++) {
-		p2[i] = p1[i + 1U] * (i + 1);
-	}
 
 	while (iter--) {
 		struct cd3deriv_s y = _horner_eval_cd(p, n, x);
@@ -306,7 +293,6 @@ tits_cdroots(complex double *restrict r, const double *p, size_t n)
 			/* assign the conjugate too */
 			r[nr++] = conj(guess);
 			n--;
-			assert(n);
 			guess = 0;
 		}
 	} while (--n > 1U);
