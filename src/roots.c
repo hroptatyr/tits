@@ -310,7 +310,11 @@ tits_cdroots(complex double *restrict r, const double *p, size_t n)
 			guess = 0;
 		}
 	} while (--n > 1U);
-
+	/* technically it's possible to reduce by complex factors only */
+	if (!n) {
+		/* yep, at least the last 2 roots were complex */
+		return nr;
+	}
 linear:
 	r[nr++] = -q[0U] / q[1U];
 	return nr;
