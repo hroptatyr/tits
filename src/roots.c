@@ -98,14 +98,11 @@ static int
 _horner_reduce_d(double *restrict p, size_t n, double at)
 {
 /* use horner method to reduce P by one degree, factoring out (x - at) */
-	double tmp[n + 1U];
-
-	tmp[n] = 0;
-	for (ssize_t i = n; i > 0U; i--) {
-		tmp[i - 1U] = p[i] + tmp[i] * at;
+	memmove(p, p + 1U, n * sizeof(*p));
+	p[n] = 0;
+	for (size_t i = n - 1; i > 0U; i--) {
+		p[i - 1U] += p[i] * at;
 	}
-
-	memcpy(p, tmp, (n + 1U) * sizeof(*tmp));
 	return 0;
 }
 
@@ -115,26 +112,26 @@ _horner_reduce_cd(double *restrict p, size_t n, complex double at)
 /* use horner method to reduce P by one degree if AT is real,
  * factoring out (x - at), and two degrees if AT is complex,
  * factoring out (x - at)(x - conj(at)) */
-	complex double tmp1[n + 1U];
-	double tmp[n + 1U];
-
 	if (!cimag(at)) {
 		return _horner_reduce_d(p, n, creal(at));
 	}
 
-	tmp1[n - 0] = 0;
-	tmp[n - 0] = 0;
-	tmp[n - 1] = 0;
-	for (ssize_t i = n; i > 1U; i--) {
-		complex double y;
+	/* we apply 2 complex reductions in a row
+	 * p[i - 1] += p[i] * at
+	 * and
+	 * p[i - 1] += p[i] * conj(at)
+	 *
+	 * so in total:
+	 * p[i - 1] += p[i] * (at + conj(at)) - p[i + 1] * at * conj(at) */
+	const double aa = creal(at * conj(at));
+	const double ra = 2 * creal(at);
 
-		tmp1[i - 1] = p[i] + tmp1[i] * at;
-		y = tmp1[i - 1] + tmp[i - 1] * conj(at);
-		assert(!cimag(y));
-		tmp[i - 2] = creal(y);
+	memmove(p, p + 2U, n * sizeof(*p));
+	p[n - 0] = 0;
+	p[n - 1] = 0;
+	for (size_t i = n - 2; i > 0U; i--) {
+		p[i - 1] += p[i] * ra - p[i + 1] * aa;
 	}
-
-	memcpy(p, tmp, (n + 1U) * sizeof(*tmp));
 	return 0;
 }
 
