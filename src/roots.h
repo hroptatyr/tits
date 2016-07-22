@@ -37,6 +37,7 @@
 #if !defined INCLUDED_roots_h_
 #define INCLUDED_roots_h_
 #include <stddef.h>
+#include <complex.h>
 
 
 /* public API */
@@ -51,5 +52,17 @@ tits_droots(double *restrict r, const double *p, size_t n);
  * Return the number of roots found. */
 extern int
 tits_sroots(float *restrict r, const float *p, size_t n);
+
+/**
+ * Find roots of polynomial P of degree N, place into R.
+ * Return the number of roots found. */
+extern int
+tits_cdroots(complex double *restrict r, const double *p, size_t n);
+
+/**
+ * Find roots of polynomial P of degree N, place into R.
+ * Return the number of roots found. */
+extern int
+tits_csroots(complex float *restrict r, const float *p, size_t n);
 
 #endif	/* INCLUDED_roots_h_ */
