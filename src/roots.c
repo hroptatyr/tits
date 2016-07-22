@@ -55,23 +55,11 @@
 # pragma warning (disable:981)
 #endif	/* __INTEL_COMPILER */
 
-struct d3deriv_s {
-	double d0;
-	double d1;
-	double d2;
-};
-
 struct cd3deriv_s {
 	complex double d0;
 	complex double d1;
 	complex double d2;
 };
-
-static inline __attribute__((const, pure)) double
-max_d(double x, double y)
-{
-	return x > y ? x : y;
-}
 
 static inline __attribute__((const, pure)) complex double
 max_cd(complex double x, complex double y)
@@ -82,24 +70,6 @@ max_cd(complex double x, complex double y)
 #if defined __INTEL_COMPILER
 # pragma warning (pop)
 #endif	/* __INTEL_COMPILER */
-
-static struct d3deriv_s
-_horner_eval_d(const double *p, size_t n, double at)
-{
-/* use horner scheme to evaluate P, its first and second derivative at AT */
-	double tmp = 0, tmpp = 0, tmppp = 0;
-
-	for (ssize_t i = n; i > 1U; i--) {
-		tmp = p[i] + tmp * at;
-		tmpp = tmp + tmpp * at;
-		tmppp = tmpp + tmppp * at;
-	}
-	tmp = p[1U] + tmp * at;
-	tmpp = tmp + tmpp * at;
-	tmp = p[0U] + tmp * at;
-	tmppp *= 2;
-	return (struct d3deriv_s){tmp, tmpp, tmppp};
-}
 
 static struct cd3deriv_s
 _horner_eval_cd(const double *p, size_t n, complex double at)
@@ -137,7 +107,7 @@ _horner_reduce_cd(double *restrict p, size_t n, complex double at)
 /* use horner method to reduce P by one degree if AT is real,
  * factoring out (x - at), and two degrees if AT is complex,
  * factoring out (x - at)(x - conj(at)) */
-	if (!cimag(at)) {
+	if (fabs(cimag(at)) < DBL_EPSILON) {
 		return _horner_reduce_d(p, n, creal(at));
 	}
 
@@ -158,36 +128,6 @@ _horner_reduce_cd(double *restrict p, size_t n, complex double at)
 		p[i - 1] += p[i] * ra - p[i + 1] * aa;
 	}
 	return 0;
-}
-
-static double
-_laguerre_d(const double *p, size_t n, double x)
-{
-/* find one root of polynomial P of degree N, guess to be at X */
-	size_t iter = 32U;
-
-	while (iter--) {
-		struct d3deriv_s y = _horner_eval_d(p, n, x);
-		double r;
-		double a;
-
-		if (fabs(y.d0) < DBL_EPSILON) {
-			/* that's good enough */
-			break;
-		}
-		y.d0 = 1 / y.d0;
-		y.d1 *= y.d0;
-		y.d2 = y.d1 * y.d1 - y.d2 * y.d0;
-		r = sqrt((y.d2 * n - y.d1 * y.d1) * (n - 1));
-		a = max_d(y.d1 + r, y.d1 - r);
-		a = 1 / a * n;
-		if (fabs(a) < DBL_EPSILON) {
-			/* good enough */
-			break;
-		}
-		x -= a;
-	}
-	return x;
 }
 
 static complex double
@@ -221,57 +161,17 @@ _laguerre_cd(const double *p, size_t n, complex double x)
 }
 
 
-int
+size_t
 tits_droots(double *restrict r, const double *p, size_t n)
-{
-	double q[n + 1U];
-	double guess = 0;
-	size_t nr = 0;
-
-	if (UNLIKELY(!p[n])) {
-		/* as if, they can call us with a proper degree */
-		return -1;
-	} else if (UNLIKELY(n == 0U)) {
-		return -1;
-	} else if (UNLIKELY(n == 1U)) {
-		goto linear;
-	}
-
-	memcpy(q, p, (n + 1U) * sizeof(*p));
-	do {
-		/* find the root in the reduced poly */
-		guess = _laguerre_d(q, n, guess);
-
-#if 0
-		/* find the root in the original poly */
-		if (UNLIKELY(isnan(guess = _laguerre_d(p, orign, guess)))) {
-			return nr;
-		}
-#endif
-		/* reduce q */
-		_horner_reduce_d(q, n, guess);
-
-		/* assign */
-		r[nr++] = guess;
-	} while (--n > 1U);
-
-linear:
-	r[nr++] = -q[0U] / q[1U];
-	return nr;
-}
-
-int
-tits_cdroots(complex double *restrict r, const double *p, size_t n)
 {
 	double q[n + 1U];
 	complex double guess = 0;
 	size_t nr = 0;
+	size_t nc = n - 2U;
 
-	if (UNLIKELY(!p[n])) {
+	if (UNLIKELY(!p[n] || n == 0U)) {
 		/* as if, they can call us with a proper degree */
-		return -1;
-	} else if (UNLIKELY(n == 0U)) {
-		return -1;
+		return 0U;
 	} else if (UNLIKELY(n == 1U)) {
 		goto linear;
 	}
@@ -281,30 +181,25 @@ tits_cdroots(complex double *restrict r, const double *p, size_t n)
 		/* find the root in the reduced poly */
 		guess = _laguerre_cd(q, n, guess);
 
-#if 0
-		/* find the root in the original poly */
-		if (UNLIKELY(isnan(guess = _laguerre_d(p, orign, guess)))) {
-			return nr;
-		}
-#endif
 		/* reduce q */
 		_horner_reduce_cd(q, n, guess);
 
 		/* assign */
-		if (cimag(r[nr++] = guess)) {
-			/* assign the conjugate too */
-			r[nr++] = conj(guess);
+		if (LIKELY(fabs(cimag(guess)) < DBL_EPSILON)) {
+			r[nr++] = creal(guess);
 			n--;
-			guess = 0;
+		} else {
+			r[nc + 0U] = creal(guess);
+			r[nc + 1U] = fabs(cimag(guess));
+			nc -= 2U;
+			n -= 2U;
 		}
-	} while (--n > 1U);
-	/* technically it's possible to reduce by complex factors only */
-	if (!n) {
-		/* yep, at least the last 2 roots were complex */
-		return nr;
+	} while (n > 1U);
+
+	if (n == 1U) {
+	linear:
+		r[nr++] = -q[0U] / q[1U];
 	}
-linear:
-	r[nr++] = -q[0U] / q[1U];
 	return nr;
 }
 
@@ -317,11 +212,9 @@ linear:
 # define _horner_eval_cd	_horner_eval_cs
 # define _horner_reduce_d	_horner_reduce_s
 # define _horner_reduce_cd	_horner_reduce_cs
-# define _laguerre_d		_laguerre_s
 # define _laguerre_cd		_laguerre_cs
 # define tits_droots		tits_sroots
 # define tits_cdroots		tits_csroots
-# define d3deriv_s		s3deriv_s
 # define cd3deriv_s		cs3deriv_s
 
 /* intrins */
@@ -345,7 +238,6 @@ int
 main(int argc, char *argv[])
 {
 	static yuck_t argi[1U];
-	int rc;
 
 	if (yuck_parse(argi, argc, argv) < 0) {
 		return 1;
@@ -356,19 +248,24 @@ main(int argc, char *argv[])
 	}
 
 	with (double p[argi->nargs]) {
-		complex double r[argi->nargs];
+		double r[argi->nargs - 1U];
+		size_t nr;
 
 		for (size_t i = 0U; i < argi->nargs; i++) {
 			p[i] = strtod(argi->args[i], NULL);
 		}
 
-		rc = tits_cdroots(r, p, countof(p) - 1U) < 0;
-		for (size_t i = 0U; i < countof(r) - 1U; i++) {
-			printf("%f + %fi\n", creal(r[i]), cimag(r[i]));
+		nr = tits_droots(r, p, countof(p) - 1U);
+		for (size_t i = 0U; i < nr; i++) {
+			printf("%f\n", r[i]);
+		}
+		for (size_t i = nr; i < countof(r); i += 2U) {
+			printf("%f + %fi\n", r[i + 0U], r[i + 1U]);
+			printf("%f - %fi\n", r[i + 0U], r[i + 1U]);
 		}
 	}
 	yuck_free(argi);
-	return rc;
+	return 0;
 }
 #endif	/* STANDALONE */
 
