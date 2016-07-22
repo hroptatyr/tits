@@ -60,4 +60,16 @@ sacf_04_LDFLAGS = $(AM_LDFLAGS)
 sacf_04_LDFLAGS += $(gsl_LIBS)
 sacf_04_LDFLAGS += $(tits_LIBS)
 
+bin_tests += acf24ar_01
+acf24ar_01_CPPFLAGS = $(AM_CPPFLAGS)
+acf24ar_01_CPPFLAGS += $(tits_CFLAGS)
+acf24ar_01_LDFLAGS = $(AM_LDFLAGS)
+acf24ar_01_LDFLAGS += $(tits_LIBS)
+
+bin_tests += acf24ar_02
+acf24ar_02_CPPFLAGS = $(AM_CPPFLAGS)
+acf24ar_02_CPPFLAGS += $(tits_CFLAGS)
+acf24ar_02_LDFLAGS = $(AM_LDFLAGS)
+acf24ar_02_LDFLAGS += $(tits_LIBS)
+
 ## Makefile.am ends here
