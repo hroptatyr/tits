@@ -30,6 +30,7 @@ libtits_la_SOURCES += xcor.c xcor.h
 libtits_la_SOURCES += sacf.c sacf.h
 libtits_la_SOURCES += perio.c perio.h
 libtits_la_SOURCES += acf24ar.c acf24ar.h
+libtits_la_SOURCES += roots.c roots.h
 libtits_la_SOURCES += version.c version.h
 libtits_la_CPPFLAGS = $(AM_CPPFLAGS)
 libtits_la_CPPFLAGS += $(mkl_CFLAGS)
@@ -48,6 +49,13 @@ guess_lag_LDFLAGS += $(mkl_LIBS)
 guess_lag_LDFLAGS += $(dfp754_LIBS)
 guess_lag_LDADD = libtits.la
 BUILT_SOURCES += guess_lag.yucc
+
+noinst_PROGRAMS += roots
+roots_SOURCES = roots.c roots.yuck
+roots_CPPFLAGS = $(AM_CPPFLAGS)
+roots_CPPFLAGS += -DSTANDALONE
+roots_LDADD = libtits.la
+BUILT_SOURCES += roots.yucc
 
 
 ## version rules
