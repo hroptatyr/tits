@@ -54,6 +54,18 @@
 # pragma warning (disable:981)
 #endif	/* __INTEL_COMPILER */
 
+struct d3deriv_s {
+	double d0;
+	double d1;
+	double d2;
+};
+
+struct cd3deriv_s {
+	complex double d0;
+	complex double d1;
+	complex double d2;
+};
+
 static inline __attribute__((const, pure)) double
 max_d(double x, double y)
 {
@@ -70,28 +82,40 @@ max_cd(complex double x, complex double y)
 # pragma warning (pop)
 #endif	/* __INTEL_COMPILER */
 
-static double
+static struct d3deriv_s
 _horner_eval_d(const double *p, size_t n, double at)
 {
-/* use horner method to reduce P by one degree, factoring out (x - at) */
-	double tmp = 0;
+/* use horner scheme to evaluate P, its first and second derivative at AT */
+	double tmp = 0, tmpp = 0, tmppp = 0;
 
-	for (ssize_t i = n; i > 0U; i--) {
+	for (ssize_t i = n; i > 1U; i--) {
 		tmp = p[i] + tmp * at;
+		tmpp = tmp + tmpp * at;
+		tmppp = tmpp + tmppp * at;
 	}
-	return p[0U] + tmp * at;
+	tmp = p[1U] + tmp * at;
+	tmpp = tmp + tmpp * at;
+	tmp = p[0U] + tmp * at;
+	tmppp *= 2;
+	return (struct d3deriv_s){tmp, tmpp, tmppp};
 }
 
-static complex double
+static struct cd3deriv_s
 _horner_eval_cd(const double *p, size_t n, complex double at)
 {
 /* use horner method to reduce P by one degree, factoring out (x - at) */
-	complex double tmp = 0;
+	complex double tmp = 0, tmpp = 0, tmppp = 0;
 
-	for (ssize_t i = n; i > 0U; i--) {
+	for (ssize_t i = n; i > 1U; i--) {
 		tmp = p[i] + tmp * at;
+		tmpp = tmp + tmpp * at;
+		tmppp = tmpp + tmppp * at;
 	}
-	return p[0U] + tmp * at;
+	tmp = p[1U] + tmp * at;
+	tmpp = tmp + tmpp * at;
+	tmp = p[0U] + tmp * at;
+	tmppp *= 2;
+	return (struct cd3deriv_s){tmp, tmpp, tmppp};
 }
 
 static int
@@ -140,35 +164,21 @@ _laguerre_d(const double *p, size_t n, double x)
 {
 /* find one root of polynomial P of degree N, guess to be at X */
 	size_t iter = 32U;
-	/* first deriv */
-	double p1[n];
-	/* second deriv */
-	double p2[n];
-
-	/* precalc first and second deriv */
-	for (size_t i = 0U; i < n; i++) {
-		p1[i] = p[i + 1U] * (i + 1);
-	}
-	for (size_t i = 0U; i < n - 1U; i++) {
-		p2[i] = p1[i + 1U] * (i + 1);
-	}
 
 	while (iter--) {
-		double y = _horner_eval_d(p, n, x);
-		double G;
-		double H;
+		struct d3deriv_s y = _horner_eval_d(p, n, x);
 		double r;
 		double a;
 
-		if (fabs(y) < DBL_EPSILON) {
+		if (fabs(y.d0) < DBL_EPSILON) {
 			/* that's good enough */
 			break;
 		}
-		y = 1 / y;
-		G = _horner_eval_d(p1, n - 1U, x) * y;
-		H = G * G - _horner_eval_d(p2, n - 2U, x) * y;
-		r = sqrt((H * n - G * G) * (n - 1));
-		a = max_d(G + r, G - r);
+		y.d0 = 1 / y.d0;
+		y.d1 *= y.d0;
+		y.d2 = y.d1 * y.d1 - y.d2 * y.d0;
+		r = sqrt((y.d2 * n - y.d1 * y.d1) * (n - 1));
+		a = max_d(y.d1 + r, y.d1 - r);
 		a = 1 / a * n;
 		if (fabs(a) < DBL_EPSILON) {
 			/* good enough */
@@ -198,21 +208,19 @@ _laguerre_cd(const double *p, size_t n, complex double x)
 	}
 
 	while (iter--) {
-		complex double y = _horner_eval_cd(p, n, x);
-		complex double G;
-		complex double H;
+		struct cd3deriv_s y = _horner_eval_cd(p, n, x);
 		complex double r;
 		complex double a;
 
-		if (fabs(y) < DBL_EPSILON) {
+		if (fabs(y.d0) < DBL_EPSILON) {
 			/* that's good enough */
 			break;
 		}
-		y = 1 / y;
-		G = _horner_eval_cd(p1, n - 1U, x) * y;
-		H = G * G - _horner_eval_cd(p2, n - 2U, x) * y;
-		r = sqrt((H * n - G * G) * (n - 1));
-		a = max_cd(G + r, G - r);
+		y.d0 = 1 / y.d0;
+		y.d1 *= y.d0;
+		y.d2 = y.d1 * y.d1 - y.d2 * y.d0;
+		r = sqrt((y.d2 * n - y.d1 * y.d1) * (n - 1));
+		a = max_cd(y.d1 + r, y.d1 - r);
 		a = 1 / a * n;
 		if (fabs(a) < DBL_EPSILON) {
 			/* good enough */
@@ -321,6 +329,8 @@ linear:
 # define _laguerre_cd		_laguerre_cs
 # define tits_droots		tits_sroots
 # define tits_cdroots		tits_csroots
+# define d3deriv_s		s3deriv_s
+# define cd3deriv_s		cs3deriv_s
 
 /* intrins */
 # undef DBL_EPSILON
