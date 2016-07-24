@@ -40,14 +40,18 @@
 
 /* public API */
 /**
- * Given a model order MO, reconstruct MO+1 AR coefficients from
- * MO+1 lags in ACF. */
+ * Given a model order MO, reconstruct MO AR coefficients from
+ * MO lags in ACF.
+ * The first lag of the ACF is assumed to be 1.0, the monomial
+ * for AR(0) is, by convention, 1.0. */
 extern int
 tits_dacf2ar(double *restrict ar, const double *acf, size_t mo);
 
 /**
- * Given a model order MO, reconstruct MO+1 AR coefficients from
- * MO+1 lags in ACF. */
+ * Given a model order MO, reconstruct MO AR coefficients from
+ * MO lags in ACF.
+ * The first lag of the ACF is assumed to be 1.f, the monomial
+ * for AR(0) is, by convention, 1.f. */
 extern int
 tits_sacf2ar(float *restrict ar, const float *acf, size_t mo);
 

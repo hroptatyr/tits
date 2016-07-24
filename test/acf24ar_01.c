@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include <stddef.h>
 #include <math.h>
 #include "acf24ar.h"
@@ -8,7 +9,6 @@ int
 main(int argc, char *argv[])
 {
 	static double acf[] = {
-		1.0000,
 		0.0075,
 		-0.3214,
 		-0.0445,
@@ -22,13 +22,19 @@ main(int argc, char *argv[])
 	};
 	double ar[countof(acf)];
 	const int ref[] = {
-		1000, 5, 335, 55, 52, 38, 11, 38, -54, 70, 30,
+		5, 335, 55, 52, 38, 11, 38, -54, 70, 30,
 	};
 	int rc = 0;
 
-	rc = tits_dacf2ar(ar, acf, countof(acf) - 1U) < 0;
-	for (size_t i = 0U; i < countof(ar); i++) {
+	rc = tits_dacf2ar(ar, acf, countof(acf)) < 0;
+	for (size_t i = 0U; i < countof(acf); i++) {
 		rc |= (int)trunc(ar[i] * 1000) != ref[i];
+	}
+	if (rc) {
+		for (size_t i = 0U; i < countof(acf); i++) {
+			printf(" %f", ar[i]);
+		}
+		putchar('\n');
 	}
 	return rc;
 }
