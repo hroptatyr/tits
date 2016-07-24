@@ -8,7 +8,6 @@ int
 main(int argc, char *argv[])
 {
 	static float acf[] = {
-		1.0000,
 		0.0075,
 		-0.3214,
 		-0.0445,
@@ -22,11 +21,11 @@ main(int argc, char *argv[])
 	};
 	float ar[countof(acf)];
 	const int ref[] = {
-		1000, 5, 335, 55, 52, 38, 11, 38, -54, 70, 30,
+		5, 335, 55, 52, 38, 11, 38, -54, 70, 30,
 	};
 	int rc = 0;
 
-	rc = tits_sacf2ar(ar, acf, countof(acf) - 1U) < 0;
+	rc = tits_sacf2ar(ar, acf, countof(acf)) < 0;
 	for (size_t i = 0U; i < countof(ar); i++) {
 		rc |= (int)truncf(ar[i] * 1000) != ref[i];
 	}

@@ -51,22 +51,21 @@ _levinson_d(double *restrict ar, const double *acf, size_t mo)
 /* following ITU-T G.729 */
 	double E;
 
-	ar[0U] = 1;
-	E = acf[0U];
-	for (size_t i = 1U; i <= mo && E > DBL_EPSILON; i++) {
-		double an[mo + 1U];
-		double k = 0;
+	E = 1;
+	for (size_t i = 0U; i < mo && E > DBL_EPSILON; i++) {
+		double an[mo];
+		double k = /*ar[0U]==1 * */acf[i];
 
 		for (size_t j = 0; j < i; j++) {
-			k += ar[j] * acf[i - j];
+			k += ar[j] * acf[i - j - 1U];
 		}
 		an[i] = k = -k / E;
 
-		for (size_t j = 1U; j < i; j++) {
-			an[j] = ar[j] + k * ar[i - j];
+		for (size_t j = 0U; j < i; j++) {
+			an[j] = ar[j] + k * ar[i - j - 1U];
 		}
 		/* ar coeffs for next round */
-		memcpy(ar + 1U, an + 1U, mo * sizeof(*an));
+		memcpy(ar, an, mo * sizeof(*an));
 
 		E *= 1 - k * k;
 	}
