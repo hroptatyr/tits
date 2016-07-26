@@ -169,9 +169,10 @@ tits_droots(double *restrict r, const double *p, size_t n)
 	size_t nr = 0;
 	size_t nc = n - 2U;
 
-	if (UNLIKELY(!p[n] || n == 0U)) {
+	if (UNLIKELY(fabs(p[n]) < DBL_EPSILON || n == 0U)) {
 		/* as if, they can call us with a proper degree */
-		return 0U;
+		memset(r, -1, n * sizeof(*r));
+		return n;
 	} else if (UNLIKELY(n == 1U)) {
 		goto linear;
 	}
