@@ -52,7 +52,7 @@ _levinson_d(double *restrict ar, const double *acf, size_t mo)
 	double E;
 
 	E = 1;
-	for (size_t i = 0U; i < mo && E > DBL_EPSILON; i++) {
+	for (size_t i = 0U; i < mo; i++) {
 		double an[mo];
 		double k = /*ar[0U]==1 * */acf[i];
 
@@ -65,7 +65,7 @@ _levinson_d(double *restrict ar, const double *acf, size_t mo)
 			an[j] = ar[j] + k * ar[i - j - 1U];
 		}
 		/* ar coeffs for next round */
-		memcpy(ar, an, mo * sizeof(*an));
+		memcpy(ar, an, (i + 1U) * sizeof(*an));
 
 		E *= 1 - k * k;
 	}
