@@ -10,7 +10,7 @@ int main(void)
 	double r[3U] = {NAN, NAN, NAN};
 	double p[] = {140, -13, -8, 1};/* == (x+4)(x-5)(x-7) */
 	const int ref[] = {
-		-4000, 7000, 5000,
+		4999, 7000, -4000,
 	};
 	int rc = 0;
 
