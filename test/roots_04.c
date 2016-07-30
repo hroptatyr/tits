@@ -1,29 +1,29 @@
 #include <stdio.h>
 #include <stddef.h>
 #include <math.h>
-#include <complex.h>
 #include "roots.h"
 #include "nifty.h"
 
 
 int main(void)
 {
-	complex float r[5U] = {NAN, NAN, NAN, NAN, NAN};
+	float r[5U] = {NAN, NAN, NAN, NAN, NAN};
 	/* (x+4+2i)(x+4-2i)(x-3+i)(x-3-i)(x-4) */
 	float p[] = {-800, 360, 32, -26, -2, 1};
 	const int ref[] = {
-		3999, 0, 3000, -999, 3000, 999, -4000, -1999, -4000, 1999,
+		3999, -4000, 2000, 3000, 999,
 	};
 	int rc = 0;
 
-	rc = tits_csroots(r, p, countof(p) - 1U) != 5;
+	rc = tits_sroots(r, p, countof(p) - 1U) != 1U;
 	for (size_t i = 0U; i < countof(r); i++) {
-		rc |= (int)trunc(creal(r[i]) * 1000) != ref[2U * i + 0U];
-		rc |= (int)trunc(cimag(r[i]) * 1000) != ref[2U * i + 1U];
+		rc |= (int)trunc(r[i] * 1000) != ref[i];
 	}
 	if (rc) {
-		for (size_t i = 0U; i < countof(r); i++) {
-			printf(" %f + %fi", creal(r[i]), cimag(r[i]));
+		printf(" %f", r[0U]);
+		for (size_t i = 1U; i < countof(r); i += 2U) {
+			printf(" %f + %fi", r[i + 0U], r[i + 1U]);
+			printf(" %f - %fi", r[i + 0U], r[i + 1U]);
 		}
 		putchar('\n');
 	}
