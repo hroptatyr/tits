@@ -69,7 +69,7 @@ _levinson_d(double *restrict ar, const double *acf, size_t mo)
 
 		E *= 1 - k * k;
 	}
-	return (E > DBL_EPSILON) - 1;
+	return (fabs(E) > DBL_EPSILON) - 1;
 }
 
 
