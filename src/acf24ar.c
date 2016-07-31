@@ -54,12 +54,12 @@ _levinson_d(double *restrict ar, const double *acf, size_t mo)
 	E = 1;
 	for (size_t i = 0U; i < mo; i++) {
 		double an[mo];
-		double k = /*ar[0U]==1 * */acf[i];
+		double k = /*ar[0U]==1 * */-acf[i];
 
 		for (size_t j = 0; j < i; j++) {
-			k += ar[j] * acf[i - j - 1U];
+			k -= ar[j] * acf[i - j - 1U];
 		}
-		an[i] = k = -k / E;
+		an[i] = k /= E;
 
 		for (size_t j = 0U; j < i; j++) {
 			an[j] = ar[j] + k * ar[i - j - 1U];
