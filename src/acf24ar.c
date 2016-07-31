@@ -49,9 +49,8 @@ static int
 _levinson_d(double *restrict ar, const double *acf, size_t mo)
 {
 /* following ITU-T G.729 */
-	double E;
+	double E = 1;
 
-	E = 1;
 	for (size_t i = 0U; i < mo; i++) {
 		double an[mo];
 		double k = /*ar[0U]==1 * */-acf[i];
@@ -81,6 +80,7 @@ tits_dacf2ar(double *restrict ar, const double *acf, size_t mo)
 
 #if !defined double
 # define double		float
+# define fabs		fabsf
 
 # define _levinson_d	_levinson_s
 # define tits_dacf2ar	tits_sacf2ar
