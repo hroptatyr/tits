@@ -50,8 +50,9 @@ _levinson_d(double *restrict ar, const double *acf, size_t mo)
 {
 /* following ITU-T G.729 */
 	double E = 1;
+	int r = 1;
 
-	for (size_t i = 0U; i < mo; i++) {
+	for (size_t i = 0U; i < mo && (r = fabs(E) > DBL_EPSILON); i++) {
 		double an[mo];
 		double k = /*ar[0U]==1 * */-acf[i];
 
@@ -68,7 +69,7 @@ _levinson_d(double *restrict ar, const double *acf, size_t mo)
 
 		E *= 1 - k * k;
 	}
-	return (fabs(E) > DBL_EPSILON) - 1;
+	return r - 1;
 }
 
 
