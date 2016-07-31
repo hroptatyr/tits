@@ -49,27 +49,27 @@ static int
 _levinson_d(double *restrict ar, const double *acf, size_t mo)
 {
 /* following ITU-T G.729 */
-	double E;
+	double E = 1;
+	int r = 1;
 
-	E = 1;
-	for (size_t i = 0U; i < mo; i++) {
+	for (size_t i = 0U; i < mo && (r = fabs(E) > DBL_EPSILON); i++) {
 		double an[mo];
-		double k = /*ar[0U]==1 * */acf[i];
+		double k = /*ar[0U]==1 * */-acf[i];
 
-		for (size_t j = 0; j < i; j++) {
-			k += ar[j] * acf[i - j - 1U];
+		for (size_t j = 1U; j <= i; j++) {
+			k -= ar[j - 1U] * acf[i - j];
 		}
-		an[i] = k = -k / E;
+		an[i] = k /= E;
 
-		for (size_t j = 0U; j < i; j++) {
-			an[j] = ar[j] + k * ar[i - j - 1U];
+		for (size_t j = 1U; j <= i; j++) {
+			an[j - 1U] = ar[j - 1U] + k * ar[i - j];
 		}
 		/* ar coeffs for next round */
 		memcpy(ar, an, (i + 1U) * sizeof(*an));
 
 		E *= 1 - k * k;
 	}
-	return (E > DBL_EPSILON) - 1;
+	return r - 1;
 }
 
 
@@ -81,6 +81,7 @@ tits_dacf2ar(double *restrict ar, const double *acf, size_t mo)
 
 #if !defined double
 # define double		float
+# define fabs		fabsf
 
 # define _levinson_d	_levinson_s
 # define tits_dacf2ar	tits_sacf2ar
