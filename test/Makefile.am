@@ -72,6 +72,18 @@ acf24ar_02_CPPFLAGS += $(tits_CFLAGS)
 acf24ar_02_LDFLAGS = $(AM_LDFLAGS)
 acf24ar_02_LDFLAGS += $(tits_LIBS)
 
+bin_tests += acf24ar_03
+acf24ar_03_CPPFLAGS = $(AM_CPPFLAGS)
+acf24ar_03_CPPFLAGS += $(tits_CFLAGS)
+acf24ar_03_LDFLAGS = $(AM_LDFLAGS)
+acf24ar_03_LDFLAGS += $(tits_LIBS)
+
+bin_tests += acf24ar_04
+acf24ar_04_CPPFLAGS = $(AM_CPPFLAGS)
+acf24ar_04_CPPFLAGS += $(tits_CFLAGS)
+acf24ar_04_LDFLAGS = $(AM_LDFLAGS)
+acf24ar_04_LDFLAGS += $(tits_LIBS)
+
 bin_tests += roots_01
 roots_01_CPPFLAGS = $(AM_CPPFLAGS)
 roots_01_CPPFLAGS += $(tits_CFLAGS)
