@@ -9,7 +9,7 @@ int
 main(int argc, char *argv[])
 {
 	static double acf[] = {
-		-0.498186, -0.148115, -0.207297, -207337.0,
+		-0.498186, -0.148115, -0.207297, -0.207337,
 	};
 	double ar[countof(acf)];
 	const int ref[] = {
