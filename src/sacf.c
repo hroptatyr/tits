@@ -41,9 +41,6 @@
 #include <string.h>
 #include <stdbool.h>
 #include <math.h>
-#include <mkl.h>
-#include <mkl_vml.h>
-#include <mkl_vsl.h>
 #include <immintrin.h>
 #include "sacf.h"
 #include "nifty.h"
