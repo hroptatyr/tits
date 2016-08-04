@@ -29,7 +29,9 @@ m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
 ## the build chain
 AC_PROG_CC([icc cc gcc])
 SXE_CHECK_CC([gnu11 gnu99])
-SXE_CHECK_CFLAGS
+SXE_CHECK_CFLAGS([native=yes])
+SXE_CHECK_INTRINS
+SXE_CHECK_CILK
 AC_C_BIGENDIAN
 
 ## check if yuck is globally available
