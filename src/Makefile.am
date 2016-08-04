@@ -33,6 +33,7 @@ libtits_la_LDFLAGS = $(AM_LDFLAGS)
 libtits_la_LDFLAGS += -lm
 EXTRA_libtits_la_DEPENDENCIES = $(LTDLDEPS)
 
+if HAVE_STRTOD32
 noinst_PROGRAMS += guess_lag
 guess_lag_SOURCES = guess_lag.c guess_lag.yuck
 guess_lag_CPPFLAGS = $(AM_CPPFLAGS)
@@ -42,6 +43,7 @@ guess_lag_LDFLAGS = $(AM_LDFLAGS)
 guess_lag_LDFLAGS += $(dfp754_LIBS)
 guess_lag_LDADD = libtits.la
 BUILT_SOURCES += guess_lag.yucc
+endif  ## HAVE_STRTOD32
 
 noinst_PROGRAMS += roots
 roots_SOURCES = roots.c roots.yuck
