@@ -19,9 +19,6 @@ SUFFIXES =
 CLEANFILES += version.c
 EXTRA_DIST += version.c.in
 
-mkl_CFLAGS = -I/opt/intel/mkl/include -mkl -xHost
-mkl_LIBS = -L/opt/intel/mkl/lib/intel64 -Wl,-rpath,/opt/intel/mkl/lib/intel64 -lmkl_rt
-
 noinst_LTLIBRARIES += libtits.la
 libtits_la_SOURCES = tits.h
 libtits_la_SOURCES += nifty.h
