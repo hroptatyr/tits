@@ -10,13 +10,14 @@ int main(void)
 	double r[3U] = {NAN, NAN, NAN};
 	double p[] = {-140, -36, 1, 1};/* == (x+4+2i)(x+4-2i)(x-7) */
 	const int ref[] = {
-		7000, -4000, 1999,
+		7000, -4000, 2000,
 	};
 	int rc = 0;
 
 	rc = tits_droots(r, p, countof(p) - 1U) != 1;
 	for (size_t i = 0U; i < countof(r); i++) {
-		rc |= (int)trunc(r[i] * 1000) != ref[i];
+		int cmp = (int)trunc(r[i] * 1000);
+		rc |= cmp < ref[i] - 1 || cmp > ref[i] + 1;
 	}
 	if (rc) {
 		printf(" %f", r[0U]);
