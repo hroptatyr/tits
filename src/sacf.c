@@ -95,12 +95,12 @@
 #endif
 #endif	/* !__mXd */
 
-typedef double ald_t __attribute__((aligned(sizeof(__mXd))));
+typedef double ald_t;
 
 typedef struct {
 	size_t n;
-	const ald_t *t;
-	const ald_t *y;
+	const ald_t *t __attribute__((aligned(sizeof(__mXd))));
+	const ald_t *y __attribute__((aligned(sizeof(__mXd))));
 } aldts_t;
 
 
