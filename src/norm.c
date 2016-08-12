@@ -57,29 +57,17 @@
 #define __mXs		__m512
 #define _mmX_set1_pd(x)	_mm512_set1_pd(x)
 #define _mmX_set1_ps(x)	_mm512_set1_ps(x)
-#define _mmX_load_pd	_mm512_load_pd
-#define _mmX_load_ps	_mm512_load_ps
-#define _mmX_store_pd	_mm512_store_pd
-#define _mmX_store_ps	_mm512_store_ps
 #elif 1
 #define __mXd		__m256d
 #define __mXs		__m256
 #define _mmX_set1_pd(x)	_mm256_set1_pd(x)
 #define _mmX_set1_ps(x)	_mm256_set1_ps(x)
-#define _mmX_load_pd	_mm256_load_pd
-#define _mmX_load_ps	_mm256_load_ps
-#define _mmX_store_pd	_mm256_store_pd
-#define _mmX_store_ps	_mm256_store_ps
 #else
 /* plain old SSE */
 #define __mXd		__m128d
 #define __mXs		__m128
 #define _mmX_set1_pd(x)	_mm_set1_pd(x)
 #define _mmX_set1_ps(x)	_mm_set1_ps(x)
-#define _mmX_load_pd	_mm_load_pd
-#define _mmX_load_ps	_mm_load_ps
-#define _mmX_store_pd	_mm_store_pd
-#define _mmX_store_ps	_mm_store_ps
 #endif
 #endif	/* !__mXd */
 
@@ -90,6 +78,7 @@ _stats_d(
 	const double *src, size_t nsrc)
 {
 /* always assume we can at least overread SRC by widthof(__mXd)!! */
+	const __mXd *Xsrc = (const __mXd*)src;
 	__mXd m1 = {};
 	__mXd m2 = {};
 
@@ -101,7 +90,7 @@ _stats_d(
 		goto rest;
 	}
 	for (size_t i = 0U, n = nsrc / widthof(__mXd); i < n; i++) {
-		register __mXd x = _mmX_load_pd(src + i * widthof(__mXd));
+		register __mXd x = Xsrc[i];
 		register __mXd dlt = x - m1;
 
 		m1 += dlt / _mmX_set1_pd((double)(i + 1U));
@@ -114,42 +103,35 @@ _stats_d(
 	 * m_2,(1+2) = m_2,1 + ... + m_2,k +
 	 *             n/k * ((k-1)*(m_1,1^2 + ... + m_1,k^2)
 	 *                    -2 m_1,i m_1,j  (for j > i)) */
-	with (double sm1[widthof(__mXd)], sm2[widthof(__mXd)]) {
-		_mmX_store_pd(sm1, m1);
-		_mmX_store_pd(sm2, m2);
+	/* add up the means */
+	for (size_t i = 0U; i < widthof(__mXd); i++) {
+		*mean += m1[i];
+	}
+	*mean /= (double)widthof(__mXd);
 
-		/* add up the means */
-		for (size_t i = 0U; i < widthof(__mXd); i++) {
-			*mean += sm1[i];
+	/* start adding the variances, -2 x_i x_j  for j>i */
+	for (size_t i = 0U; i < widthof(__mXd); i++) {
+		for (size_t j = i + 1U; j < widthof(__mXd); j++) {
+			*svar -= 2 * m1[i] * m1[j];
 		}
-		*mean /= (double)widthof(__mXd);
+	}
 
-		/* start adding the variances */
-		/* make use of the fact that the mu's are still in sm1 */
-		for (size_t i = 0U; i < widthof(__mXd); i++) {
-			for (size_t j = i + 1U; j < widthof(__mXd); j++) {
-				*svar += -2 * sm1[i] * sm1[j];
-			}
-		}
-
-		/* mtmp <- (k-1) * m1 * m1 */
-		with (__mXd mtmp = m1 * m1) {
-			mtmp *= _mmX_set1_pd((double)(widthof(__mXd) - 1U));
-			_mmX_store_pd(sm1, mtmp);
-		}
+	/* mtmp <- (k-1) * m1 * m1 */
+	with (__mXd mtmp = m1 * m1) {
+		mtmp *= _mmX_set1_pd((double)(widthof(__mXd) - 1U));
 		/* and add them, sm1 is garbage from here on */
 		for (size_t i = 0U; i < widthof(__mXd); i++) {
-			*svar += sm1[i];
+			*svar += mtmp[i];
 		}
+	}
 
-		/* SUM <- n/k SUM */
-		*svar *= (double)(nsrc / widthof(__mXd));
-		*svar /= (double)widthof(__mXd);
+	/* SUM <- n/k SUM */
+	*svar *= (double)(nsrc / widthof(__mXd));
+	*svar /= (double)widthof(__mXd);
 
-		/* now add on top the actual m2's */
-		for (size_t i = 0U; i < widthof(__mXd); i++) {
-			*svar += sm2[i];
-		}
+	/* now add on top the actual m2's */
+	for (size_t i = 0U; i < widthof(__mXd); i++) {
+		*svar += m2[i];
 	}
 rest:
 	for (size_t i = nsrc / widthof(__mXd) * widthof(__mXd); i < nsrc; i++) {
@@ -183,12 +165,13 @@ tits_dnorm(double *restrict tgtsrc, size_t nsrc)
 	mmu = _mmX_set1_pd(mean);
 	sdev = _(1.) / sqrt(svar);
 	msd = _mmX_set1_pd(sdev);
-	for (size_t i = 0U, n = nsrc / widthof(__mXd); i < n; i++) {
-		register __mXd ms;
-		ms = _mmX_load_pd(tgtsrc + i * widthof(__mXd));
-		ms += mmu;
-		ms *= msd;
-		_mmX_store_pd(tgtsrc + i * widthof(__mXd), ms);
+	with (__mXd *restrict Xts = (__mXd*)tgtsrc) {
+		for (size_t i = 0U, n = nsrc / widthof(__mXd); i < n; i++) {
+			register __mXd ms = Xts[i];
+			ms += mmu;
+			ms *= msd;
+			Xts[i] = ms;
+		}
 	}
 	for (size_t i = nsrc / widthof(__mXd) * widthof(__mXd); i < nsrc; i++) {
 		tgtsrc[i] += mean;
@@ -210,20 +193,8 @@ tits_dnorm(double *restrict tgtsrc, size_t nsrc)
 /* intrins */
 # undef __mXd
 # undef _mmX_set1_pd
-# undef _mmX_load_pd
-# undef _mmX_store_pd
-# undef _mmX_add_pd
-# undef _mmX_sub_pd
-# undef _mmX_mul_pd
-# undef _mmX_div_pd
 # define __mXd		__mXs
 # define _mmX_set1_pd	_mmX_set1_ps
-# define _mmX_load_pd	_mmX_load_ps
-# define _mmX_store_pd	_mmX_store_ps
-# define _mmX_add_pd	_mmX_add_ps
-# define _mmX_sub_pd	_mmX_sub_ps
-# define _mmX_mul_pd	_mmX_mul_ps
-# define _mmX_div_pd	_mmX_div_ps
 
 # undef _
 # define _(x)		(x ## f)
