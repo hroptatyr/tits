@@ -107,7 +107,13 @@ _stats_d(
 		m1 += dlt / _mmX_set1_pd((double)(i + 1U));
 		m2 += dlt * (x - m1);
 	}
-	/* combine all the m1 and m2 moments */
+	/* combine all the m1 and m2 moments
+	 * combining goes as follows:
+	 * m_0,(1+...+k) = m_0,1 + ... + m_0,k  (assumed to be k*m0)
+	 * m_1,(1+...+k) = (m_1,1 + ... + m_1,k) / k
+	 * m_2,(1+2) = m_2,1 + ... + m_2,k +
+	 *             n/k * ((k-1)*(m_1,1^2 + ... + m_1,k^2)
+	 *                    -2 m_1,i m_1,j  (for j > i)) */
 	with (double sm1[widthof(__mXd)], sm2[widthof(__mXd)]) {
 		_mmX_store_pd(sm1, m1);
 		_mmX_store_pd(sm2, m2);
