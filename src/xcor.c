@@ -42,6 +42,7 @@
 #include <stdbool.h>
 #include <math.h>
 #include <immintrin.h>
+#include "norm.h"
 #include "xcor.h"
 #include "nifty.h"
 
@@ -95,17 +96,15 @@
 #endif
 #endif	/* !__mXd */
 
-typedef double ald_t;
-
 typedef struct {
 	size_t n;
-	const ald_t *t __attribute__((aligned(sizeof(__mXd))));
-	const ald_t *y __attribute__((aligned(sizeof(__mXd))));
+	const double *t __attribute__((aligned(sizeof(__mXd))));
+	const double *y __attribute__((aligned(sizeof(__mXd))));
 } aldts_t;
 
 
 static double
-_meandiff_d(const ald_t s[], size_t ns)
+_meandiff_d(const double *s, size_t ns)
 {
 	double sum = 0.;
 
@@ -119,78 +118,8 @@ _meandiff_d(const ald_t s[], size_t ns)
 	return -sum / (double)ns;
 }
 
-static __attribute__((unused)) int
-_stats_d(
-	double mean[static 1U], double std[static 1U],
-	const ald_t s[], size_t ns)
-{
-	double sum;
-
-	sum = 0.;
-	for (size_t i = 0U; i < ns; i++) {
-		sum += s[i];
-	}
-	*mean = sum / (double)ns;
-
-	sum = 0.;
-	for (size_t i = 0U; i < ns; i++) {
-		double tmp = (s[i] - *mean);
-		sum += tmp * tmp;
-	}
-	*std = sqrt(sum / (double)ns);
-	return 0;
-}
-
-static __attribute__((unused)) int
-_quasi_stats_d(
-	double mean[static 1U], double std[static 1U],
-	const ald_t s[], size_t ns)
-{
-	double min = s[0U], max = s[0U];
-
-	for (size_t i = 1U; i < ns; i++) {
-		if (s[i] > max) {
-			max = s[i];
-		} else if (s[i] < min) {
-			min = s[i];
-		}
-	}
-
-	*std = (max - min);
-	*mean = ((s[0U] + s[ns - 1U]) / 2.f + (max + min) / 2.f) / 2.f;
-	return 0;
-}
-
 static int
-_norm_d(ald_t s[], size_t ns,
-	int(*statf)(double*, double*, const ald_t[], size_t))
-{
-/* calculate (s - mean(s)) / std(s) */
-	double mu, sigma;
-	register __mXd mmu;
-	register __mXd msd;
-
-	if (UNLIKELY(statf(&mu, &sigma, s, ns) < 0)) {
-		return -1;
-	}
-
-	/* go for (s + -mu) * 1/sigma */
-	mu = -mu;
-	mmu = _mmX_broadcast_sd(&mu);
-	sigma = _(1.) / sigma;
-	msd = _mmX_broadcast_sd(&sigma);
-	for (size_t i = 0U; i + widthof(__mXd) - 1U < ns; i += widthof(__mXd)) {
-		register __mXd ms;
-		ms = _mmX_load_pd(s + i);
-		ms = _mmX_add_pd(ms, mmu);
-		ms = _mmX_mul_pd(ms, msd);
-		_mmX_store_pd(s + i, ms);
-	}
-	return 0;
-}
-
-static int
-_dscal(ald_t s[], size_t ns, double f)
+_dscal(double *restrict s, size_t ns, double f)
 {
 /* calculate f * s */
 	register __mXd mf = _mmX_broadcast_sd(&f);
@@ -278,8 +207,8 @@ int
 tits_dxcor(double *restrict tgt, dts_t ts1, dts_t ts2, int nlags, double tau)
 {
 	size_t n1, n2;
-	ald_t *t1, *t2;
-	ald_t *y1, *y2;
+	double *t1, *t2;
+	double *y1, *y2;
 
 	/* shrink to numbers of elements divisible by the width */
 	if (UNLIKELY(!(n1 = ts1.n - ts1.n % widthof(__mXd)))) {
@@ -300,8 +229,8 @@ tits_dxcor(double *restrict tgt, dts_t ts1, dts_t ts2, int nlags, double tau)
 	memcpy(t2, ts2.t, n2 * sizeof(*t2));
 	memcpy(y2, ts2.y, n2 * sizeof(*y2));
 
-	(void)_norm_d(y1, n1, _stats_d);
-	(void)_norm_d(y2, n2, _stats_d);
+	tits_dnorm(y1, n1);
+	tits_dnorm(y2, n2);
 
 	with (double tmd1, tmd2) {
 		register double rtau = _(1.) / tau;
@@ -332,13 +261,10 @@ tits_dxcor(double *restrict tgt, dts_t ts1, dts_t ts2, int nlags, double tau)
 #if !defined double
 # define double		float
 # define dts_t		sts_t
-# define ald_t		als_t
 # define aldts_t	alsts_t
 
 # define _dscal		_sscal
-# define _norm_d	_norm_s
-# define _stats_d	_stats_s
-# define _quasi_stats_d	_quasi_stats_s
+# define tits_dnorm	tits_snorm
 # define _meandiff_d	_meandiff_s
 
 # define dxcf		sxcf
