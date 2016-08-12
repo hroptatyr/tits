@@ -23,6 +23,7 @@ noinst_LTLIBRARIES += libtits.la
 libtits_la_SOURCES = tits.h
 libtits_la_SOURCES += nifty.h
 libtits_la_SOURCES += hash.c hash.h
+libtits_la_SOURCES += norm.c norm.h
 libtits_la_SOURCES += xcor.c xcor.h
 libtits_la_SOURCES += sacf.c sacf.h
 libtits_la_SOURCES += perio.c perio.h
