@@ -56,43 +56,19 @@
 /* AVX-512 */
 #define __mXd		__m512d
 #define __mXs		__m512
-#define _mmX_broadcast_sd(x)	_mm512_broadcastsd_pd(_mm_load1_pd(x))
-#define _mmX_broadcast_ss(x)	_mm512_broadcastss_ps(_mm_load1_ps(x))
-#define _mmX_load_pd	_mm512_load_pd
-#define _mmX_load_ps	_mm512_load_ps
-#define _mmX_store_pd	_mm512_store_pd
-#define _mmX_store_ps	_mm512_store_ps
-#define _mmX_add_pd	_mm512_add_pd
-#define _mmX_add_ps	_mm512_add_ps
-#define _mmX_mul_pd	_mm512_mul_pd
-#define _mmX_mul_ps	_mm512_mul_ps
+#define _mmX_set1_pd(x)	_mm512_set1_pd(x)
+#define _mmX_set1_ps(x)	_mm512_set1_ps(x)
 #elif 1
 #define __mXd		__m256d
 #define __mXs		__m256
-#define _mmX_broadcast_sd(x)	_mm256_broadcast_sd(x)
-#define _mmX_broadcast_ss(x)	_mm256_broadcast_ss(x)
-#define _mmX_load_pd	_mm256_load_pd
-#define _mmX_load_ps	_mm256_load_ps
-#define _mmX_store_pd	_mm256_store_pd
-#define _mmX_store_ps	_mm256_store_ps
-#define _mmX_add_pd	_mm256_add_pd
-#define _mmX_add_ps	_mm256_add_ps
-#define _mmX_mul_pd	_mm256_mul_pd
-#define _mmX_mul_ps	_mm256_mul_ps
+#define _mmX_set1_pd(x)	_mm256_set1_pd(x)
+#define _mmX_set1_ps(x)	_mm256_set1_ps(x)
 #else
 /* plain old SSE */
 #define __mXd		__m128d
 #define __mXs		__m128
-#define _mmX_broadcast_sd(x)	_mm_load1_pd(x)
-#define _mmX_broadcast_ss(x)	_mm_load1_ps(x)
-#define _mmX_load_pd	_mm_load_pd
-#define _mmX_load_ps	_mm_load_ps
-#define _mmX_store_pd	_mm_store_pd
-#define _mmX_store_ps	_mm_store_ps
-#define _mmX_add_pd	_mm_add_pd
-#define _mmX_add_ps	_mm_add_ps
-#define _mmX_mul_pd	_mm_mul_pd
-#define _mmX_mul_ps	_mm_mul_ps
+#define _mmX_set1_pd(x)	_mm_set1_pd(x)
+#define _mmX_set1_ps(x)	_mm_set1_ps(x)
 #endif
 #endif	/* !__mXd */
 
@@ -122,13 +98,16 @@ static int
 _dscal(double *restrict s, size_t ns, double f)
 {
 /* calculate f * s */
-	register __mXd mf = _mmX_broadcast_sd(&f);
+	register __mXd mf = _mmX_set1_pd(f);
 
-	for (size_t i = 0U; i + widthof(__mXd) - 1U < ns; i += widthof(__mXd)) {
-		register __mXd ms;
-		ms = _mmX_load_pd(s + i);
-		ms = _mmX_mul_pd(ms, mf);
-		_mmX_store_pd(s + i, ms);
+	with (__mXd *restrict ms = (__mXd*)s) {
+		for (size_t i = 0U, n = ns / widthof(__mXd); i < n; i++) {
+			ms[i] *= mf;
+		}
+	}
+	/* and the glorious rest */
+	for (size_t i = ns / widthof(__mXd) * widthof(__mXd); i < ns; i++) {
+		s[i] *= f;
 	}
 	return 0;
 }
@@ -265,17 +244,9 @@ tits_dsacf(double *restrict tgt, dts_t ts, size_t nlags, double tau)
 
 /* intrins */
 # undef __mXd
-# undef _mmX_broadcast_sd
-# undef _mmX_load_pd
-# undef _mmX_store_pd
-# undef _mmX_add_pd
-# undef _mmX_mul_pd
+# undef _mmX_set1_pd
 # define __mXd		__mXs
-# define _mmX_broadcast_sd	_mmX_broadcast_ss
-# define _mmX_load_pd	_mmX_load_ps
-# define _mmX_store_pd	_mmX_store_ps
-# define _mmX_add_pd	_mmX_add_ps
-# define _mmX_mul_pd	_mmX_mul_ps
+# define _mmX_set1_pd	_mmX_set1_ps
 
 # undef _
 # define _(x)		(x ## f)
