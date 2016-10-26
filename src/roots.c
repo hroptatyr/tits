@@ -134,9 +134,7 @@ static complex double
 _laguerre_cd(const double *p, size_t n, complex double x)
 {
 /* find one root of polynomial P of degree N, guess to be at X */
-	size_t iter = 32U;
-
-	while (iter--) {
+	for (size_t iter = 32U; iter; iter--) {
 		struct cd3deriv_s y = _horner_eval_cd(p, n, x);
 		complex double r;
 		complex double a;
