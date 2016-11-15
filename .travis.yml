@@ -6,13 +6,6 @@ os:
 compiler:
   - gcc
 
-before_install:
-  - sudo apt-get -qq update
-
-install:
-  - sudo apt-get install -qq libdfp1
-  - sudo apt-get install -qq libdfp-dev
-
 before_script:
   - autoreconf -vfi
 
@@ -32,3 +25,9 @@ branches:
 notifications:
   email:
     - devel@fresse.org
+
+addons:
+  apt:
+    packages:
+      - gsl-bin
+      - libgsl0-dev
