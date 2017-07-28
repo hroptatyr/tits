@@ -120,4 +120,20 @@ roots_04_CPPFLAGS += $(tits_CFLAGS)
 roots_04_LDFLAGS = $(AM_LDFLAGS)
 roots_04_LDFLAGS += $(tits_LIBS)
 
+bin_tests += hy_01
+hy_01_CPPFLAGS = $(AM_CPPFLAGS)
+hy_01_CPPFLAGS += $(gsl_CFLAGS)
+hy_01_CPPFLAGS += $(tits_CFLAGS)
+hy_01_LDFLAGS = $(AM_LDFLAGS)
+hy_01_LDFLAGS += $(gsl_LIBS)
+hy_01_LDFLAGS += $(tits_LIBS)
+
+bin_tests += xcor_01
+xcor_01_CPPFLAGS = $(AM_CPPFLAGS)
+xcor_01_CPPFLAGS += $(gsl_CFLAGS)
+xcor_01_CPPFLAGS += $(tits_CFLAGS)
+xcor_01_LDFLAGS = $(AM_LDFLAGS)
+xcor_01_LDFLAGS += $(gsl_LIBS)
+xcor_01_LDFLAGS += $(tits_LIBS)
+
 ## Makefile.am ends here
