@@ -29,7 +29,6 @@ libtits_la_SOURCES += sacf.c sacf.h
 libtits_la_SOURCES += perio.c perio.h
 libtits_la_SOURCES += acf24ar.c acf24ar.h
 libtits_la_SOURCES += roots.c roots.h
-libtits_la_SOURCES += hy.c hy.h
 libtits_la_SOURCES += version.c version.h
 libtits_la_LDFLAGS = $(AM_LDFLAGS)
 libtits_la_LDFLAGS += -lm
